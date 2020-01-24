@@ -76,6 +76,8 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f& loc, float angle) {
+    // robot_loc_ = loc;
+    // robot_angle_ = angle;
 }
 
 void Navigation::UpdateOdometry(const Vector2f& loc,
@@ -91,6 +93,12 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
 void Navigation::Run() {
   // Create Helper functions here
   // Milestone 1 will fill out part of this class.
+  AckermannCurvatureDriveMsg msg;
+  msg.velocity = 2.0;
+  msg.curvature = 10;
+
+  drive_pub_.publish(msg);
+
   // Milestone 3 will complete the rest of navigation.
 }
 
