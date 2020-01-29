@@ -38,6 +38,10 @@ using f1tenth_course::AckermannCurvatureDriveMsg;
 using f1tenth_course::VisualizationMsg;
 using std::string;
 using std::vector;
+using std::cout;
+using std::endl;
+using std::sqrt;
+using std::pow;
 
 using namespace math_util;
 using namespace ros_helpers;
@@ -59,6 +63,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     robot_angle_(0),
     robot_vel_(0, 0),
     robot_omega_(0),
+    robot_dist_traveled_(0.0),
     nav_complete_(true),
     nav_goal_loc_(0, 0),
     nav_goal_angle_(0) {
@@ -73,17 +78,25 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
+
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f& loc, float angle) {
-    // robot_loc_ = loc;
-    // robot_angle_ = angle;
+   
 }
 
 void Navigation::UpdateOdometry(const Vector2f& loc,
                                 float angle,
                                 const Vector2f& vel,
                                 float ang_vel) {
+    
+    if (robot_loc_ == Vector2f(0,0)){
+        robot_loc_ = loc;
+    }
+    robot_dist_traveled_ += sqrt(pow(loc.x() - robot_loc_.x(), 2) + pow(loc.y() - robot_loc_.y(), 2));
+    robot_vel_ = vel;
+    robot_angle_ = angle;
+    robot_loc_ = loc;
 }
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
@@ -91,15 +104,43 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
 }
 
 void Navigation::Run() {
-  // Create Helper functions here
-  // Milestone 1 will fill out part of this class.
-  AckermannCurvatureDriveMsg msg;
-  msg.velocity = 2.0;
-  msg.curvature = 10;
+    const float max_vel = 1.0;
+    const float max_acc = 3.0;
+    const float max_decc = 3.0;
+    const float delta_x = 5.0;
+    const float x1 = pow(max_vel, 2) / ( 2 * max_acc);
+    const float x3 = pow(max_vel, 2) / ( 2 * max_decc);
+    const float x2 = delta_x - (x1) - (x3);
+    float vel = sqrt(pow(robot_vel_.x(), 2) + pow(robot_vel_.y(), 2));
+    
+    //accelerate to max vel
+    if (vel < max_vel && robot_dist_traveled_ < x1 + x2){
+        vel += max_acc * (1.0/20);
+        if (vel >= max_vel){
+            vel = max_vel;
+        }
+    } 
 
-  drive_pub_.publish(msg);
+    //check to see if we reach the point to slow down
+    if (robot_dist_traveled_ >= x1 + x2){
+        cout << "decelrating" << endl;
+        vel -= max_decc * (1.0/20);
+        if (vel <= 0){
+            cout << "vel < 0" << endl;
+            vel = 0;
+        }
+    }
 
-  // Milestone 3 will complete the rest of navigation.
+    cout << "vel: " << vel << " dist: " << robot_dist_traveled_ << endl;
+
+    AckermannCurvatureDriveMsg msg;
+    msg.velocity = vel;
+    msg.curvature = 0;
+    drive_pub_.publish(msg);
+    
+// Milestone 3 will complete the rest of navigation.
+
+
 }
 
 }  // namespace navigation

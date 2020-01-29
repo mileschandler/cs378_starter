@@ -80,6 +80,9 @@ class Navigation {
   // Odometry-reported robot angle.
   float odom_angle_;
 
+  //tracks the distance travelled
+  float robot_dist_traveled_;
+
   // Whether navigation is complete.
   bool nav_complete_;
   // Navigation goal location.
