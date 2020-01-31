@@ -148,7 +148,7 @@ void Navigation::Run(float delta_x) {
     }
     // Cruise if at max speed, and there is distance left
     // Decelerate if not enough distance left
-    cout << "x_vel: " << robot_vel_.x() << endl;
+    cout << "x_vel: " << robot_vel_.x() << "y_vel: " << robot_vel_.y() << endl;
     cout << "vel: " << vel << " dist: " << robot_dist_traveled_ << endl;
 
     AckermannCurvatureDriveMsg msg;
