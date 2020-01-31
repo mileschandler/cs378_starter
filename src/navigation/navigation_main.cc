@@ -56,6 +56,9 @@ using ros_helpers::Eigen2DToRosPoint;
 using ros_helpers::RosPoint;
 using ros_helpers::SetRosVector;
 using std::string;
+using std::stof;
+using std::cout;
+using std::endl;
 using std::vector;
 using Eigen::Vector2f;
 
@@ -139,10 +142,19 @@ int main(int argc, char** argv) {
   ros::Subscriber goto_sub =
       n.subscribe("/move_base_simple/goal", 1, &GoToCallback);
 
+  
+  
+  //distance to travel pos 1
+  float dist = stof(argv[1]);
+  
+
+
+  
+
   RateLoop loop(20.0);
   while (run_ && ros::ok()) {
     ros::spinOnce();
-    navigation_->Run();
+    navigation_->Run(dist);
     loop.Sleep();
   }
   delete navigation_;

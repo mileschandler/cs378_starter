@@ -64,6 +64,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     robot_vel_(0, 0),
     robot_omega_(0),
     robot_dist_traveled_(0.0),
+    robot_decc_(0.0),
     nav_complete_(true),
     nav_goal_loc_(0, 0),
     nav_goal_angle_(0) {
@@ -103,34 +104,51 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
 }
 
-void Navigation::Run() {
+void Navigation::Run(float delta_x) {
     const float max_vel = 1.0;
     const float max_acc = 3.0;
     const float max_decc = 3.0;
-    const float delta_x = 5.0;
-    const float x1 = pow(max_vel, 2) / ( 2 * max_acc);
-    const float x3 = pow(max_vel, 2) / ( 2 * max_decc);
-    const float x2 = delta_x - (x1) - (x3);
-    float vel = sqrt(pow(robot_vel_.x(), 2) + pow(robot_vel_.y(), 2));
-    
-    //accelerate to max vel
-    if (vel < max_vel && robot_dist_traveled_ < x1 + x2){
-        vel += max_acc * (1.0/20);
-        if (vel >= max_vel){
-            vel = max_vel;
-        }
-    } 
+    const float min_decc_distance = pow(max_vel, 2) / ( 2 * max_decc);
+    float vel = robot_vel_.x();//sqrt(pow(robot_vel_.x(), 2) + pow(robot_vel_.y(), 2));
 
-    //check to see if we reach the point to slow down
-    if (robot_dist_traveled_ >= x1 + x2){
-        cout << "decelrating" << endl;
-        vel -= max_decc * (1.0/20);
-        if (vel <= 0){
+
+    float time_step = 1.0/20;
+    float future_vel = vel + max_acc * time_step;//vt = v0 + aT
+    float dist_acc_step = (pow(future_vel, 2) - pow(robot_vel_.x(), 2)) / (2 * max_acc);// v^2t = v^20 + 2as -> (v^2t - v^20) / 2a = s
+    float poss_acc_distance = robot_dist_traveled_ + dist_acc_step;
+    bool can_accelerate = delta_x - (poss_acc_distance + min_decc_distance) >= 0;
+
+    bool at_max_speed = vel >= max_vel;
+
+    float dist_cruise_step =  max_vel * time_step;
+    float poss_cruise_dist = robot_dist_traveled_ + dist_cruise_step; // xt = x0 + voT + (1/2)aT^2
+    bool cruise = delta_x - (poss_cruise_dist + min_decc_distance) >= 0;
+      // Accelerate if not at max speed and there is distance left
+    if (can_accelerate && !at_max_speed) {
+        //accelerate
+        cout << "accelerate" << endl;
+        vel += max_acc * (time_step);
+    } else if (cruise) { // If car travels at max speed for one time-step, and then decelerates to a stop, there should be >= 0 distance left after that
+        //cruise
+        cout << "cruise" << endl;
+        vel = max_vel;
+    } else {
+        //slow down, mayday
+        cout << "mayday" << endl;
+        float rem_dist = delta_x - robot_dist_traveled_;
+        if (robot_decc_ == 0.0) {
+            robot_decc_ = vel / (2.0 * rem_dist);
+        }
+
+        vel -= robot_decc_ * (time_step);
+        if (vel <= 0) {
             cout << "vel < 0" << endl;
             vel = 0;
         }
     }
-
+    // Cruise if at max speed, and there is distance left
+    // Decelerate if not enough distance left
+    cout << "x_vel: " << robot_vel_.x() << endl;
     cout << "vel: " << vel << " dist: " << robot_dist_traveled_ << endl;
 
     AckermannCurvatureDriveMsg msg;

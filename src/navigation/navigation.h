@@ -61,7 +61,7 @@ class Navigation {
                          double time);
 
   // Main function called continously from main
-  void Run();
+  void Run(float delta_x);
   // Used to set the next target pose.
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
@@ -82,6 +82,9 @@ class Navigation {
 
   //tracks the distance travelled
   float robot_dist_traveled_;
+
+  //computed deceleration needed to stop
+  float robot_decc_;
 
   // Whether navigation is complete.
   bool nav_complete_;
