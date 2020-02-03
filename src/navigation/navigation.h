@@ -86,6 +86,9 @@ class Navigation {
   //computed deceleration needed to stop
   float robot_decc_;
 
+  // -1 for none, 0 for accelerating, 1 for cruising, 2 for deccelerating
+  int robot_prev_state;
+
   // Whether navigation is complete.
   bool nav_complete_;
   // Navigation goal location.
