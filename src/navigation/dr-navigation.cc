@@ -99,8 +99,6 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
                                 float angle,
                                 const Vector2f& vel,
                                 float ang_vel) {
-
-    robot_dist_traveled_ += vel.x() * time_step;
     
 }
 
@@ -118,7 +116,7 @@ float Navigation::FutureVelocity() {
 
 float Navigation::GetVelocity(float delta_x) {
     const float old_vel = robot_vel_.x();
-    //robot_dist_traveled_ += robot_vel_.x() * time_step;
+    robot_dist_traveled_ += robot_vel_.x() * time_step;
     // get he possible new velocity assuming we wont deccelerate
     const float poss_new_vel = FutureVelocity();
     // given the next velocity, this is how much distance it woudl take to slow down to 0.
