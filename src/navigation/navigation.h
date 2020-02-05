@@ -60,6 +60,11 @@ class Navigation {
   void ObservePointCloud(const std::vector<Eigen::Vector2f>& cloud,
                          double time);
 
+  float FutureVelocity();
+
+  // Gets the velocity to publish to the driver for the next time step
+  float GetVelocity(float delta_x);
+
   // Main function called continously from main
   void Run(float delta_x);
   // Used to set the next target pose.

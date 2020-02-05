@@ -44,6 +44,7 @@ using std::sqrt;
 using std::pow;
 using std::min;
 using std::abs;
+using std::max;
 
 using namespace math_util;
 using namespace ros_helpers;
@@ -105,47 +106,44 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
 }
 
-void Navigation::Run(float delta_x) {
-    float old_vel = robot_vel_.x();
-    const float dist_thresh_x1 = pow(max_vel, 2) / (2 * max_acc);
-    const float dist_thresh_x3 = (pow(max_vel, 2)) / (2 * max_decc);
-    const float t2 = (delta_x - dist_thresh_x1 - dist_thresh_x3) / max_vel;
-    const float dist_thresh_x2 = (t2 * max_vel) + dist_thresh_x1; 
+float Navigation::FutureVelocity() {
+    float old = robot_vel_.x();
+    old += max_acc * time_step;
+    return min(old, max_vel);
+}
 
-    if (robot_dist_traveled_ < dist_thresh_x1) {
-        robot_prev_state = 0;
-        float acc = max_acc;
-        float poss_future_dist = (robot_vel_.x() * time_step) + ((acc * pow(time_step, 2)) / 2.0);
-        if (poss_future_dist + robot_dist_traveled_ > dist_thresh_x1){
-            acc = (2 * (dist_thresh_x1 - robot_dist_traveled_ - (robot_vel_.x() * time_step))) / pow(time_step, 2);
-        }
-        robot_vel_.x() += (acc * time_step);
-        robot_dist_traveled_ += (pow(robot_vel_.x(), 2) - pow(old_vel, 2)) / (2 * acc); 
-    } else if (robot_dist_traveled_ < dist_thresh_x2){
-        robot_prev_state = 1;
-        robot_vel_.x() = max_vel;
-        robot_dist_traveled_ += robot_vel_.x() * time_step;
+
+
+float Navigation::GetVelocity(float delta_x) {
+    const float old_vel = robot_vel_.x();
+    robot_dist_traveled_ += robot_vel_.x() * time_step;
+    // get he possible new velocity assuming we wont deccelerate
+    const float poss_new_vel = FutureVelocity();
+    // given the next velocity, this is how much distance it woudl take to slow down to 0.
+    const float min_decc_dist = pow(poss_new_vel, 2) / (2 * max_decc);
+    // if the dist so far + the min decc dist given a new vel is less than delta_x
+    if (robot_dist_traveled_ + min_decc_dist < delta_x) {
+        // we can continue with the new vel
+        robot_vel_.x() = poss_new_vel;
     } else {
-        if (robot_prev_state == 1) {
-            robot_vel_.x() = max_vel; 
-        }
-        robot_prev_state = 2;
-        if (robot_dist_traveled_ < delta_x){
-            robot_vel_.x() -= (max_decc * time_step);
-            robot_dist_traveled_ += robot_vel_.x() * time_step;
-        } else {
-           robot_vel_.x() = 0;
+        // we need to deccelerate
+        robot_vel_.x() -= max_decc * time_step;
+        if (robot_vel_.x() < 0){
+            robot_vel_.x() = 0;
         }
     }
+
     cout << old_vel << " ==> " << robot_vel_.x() << " dist: " << robot_dist_traveled_ << endl;
+    return robot_vel_.x();
+}
+
+void Navigation::Run(float delta_x) {
+    const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
-    msg.velocity = robot_vel_.x();
+    msg.velocity = new_vel;
     msg.curvature = 0;
     drive_pub_.publish(msg);
     
-// Milestone 3 will complete the rest of navigation.
-
-
 }
 
 }  // namespace navigation
