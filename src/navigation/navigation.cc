@@ -62,6 +62,8 @@ const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 
+const float latency = 0.1; // this is approximate, could actually be closer to 0.15
+
 } //namespace
 
 namespace navigation {
@@ -100,6 +102,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
                                 const Vector2f& vel,
                                 float ang_vel) {
 
+    //accounting for latency here (naiive assuming constant vel)
     robot_dist_traveled_ += vel.x() * time_step;
     
 }
@@ -121,10 +124,11 @@ float Navigation::GetVelocity(float delta_x) {
     //robot_dist_traveled_ += robot_vel_.x() * time_step;
     // get he possible new velocity assuming we wont deccelerate
     const float poss_new_vel = FutureVelocity();
-    // given the next velocity, this is how much distance it woudl take to slow down to 0.
+    // given the next velocity, this is how much distance it would take to slow down to 0.
     const float min_decc_dist = pow(poss_new_vel, 2) / (2 * max_decc);
     // if the dist so far + the min decc dist given a new vel is less than delta_x
-    if (robot_dist_traveled_ + min_decc_dist < delta_x) {
+    float lat_dist = robot_vel_.x() * latency;
+    if ((robot_dist_traveled_ + lat_dist) + min_decc_dist < delta_x) {
         // we can continue with the new vel
         robot_vel_.x() = poss_new_vel;
     } else {
