@@ -62,7 +62,7 @@ const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 
-const float latency = 0.2; // this is approximate, could actually be closer to 0.15
+const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
 } //namespace
 
