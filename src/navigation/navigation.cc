@@ -114,7 +114,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     }
     cout << "angle " << (angle - robot_angle_) << endl;
     //checking
-    Rotation2Df delta_theta(robot_angle_);
+    Rotation2Df delta_theta(-robot_angle_);
     Vector2f delta_loc = (delta_theta * loc) - robot_loc_;
     // Vector2f delta_loc = loc - robot_loc_;
 
