@@ -106,16 +106,20 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 
     // robot_dist_traveled_ += vel.x() * time_step;
     // need to use the location to be updating our distance
+    
     if (first_odom) {
         robot_loc_ = loc;
         robot_angle_ = angle;
         first_odom = false;
     }
+    cout << "angle " << (angle - robot_angle_) << endl;
     Rotation2Df delta_theta(angle - robot_angle_);
-    Vector2f delta_loc = loc - (delta_theta * robot_loc_);
+    Vector2f delta_loc = (delta_theta * loc) - robot_loc_;
+    // Vector2f delta_loc = loc - robot_loc_;
 
-    robot_dist_traveled_ += sqrt(pow(delta_loc.x(), 2) + pow(delta_loc.y(), 2));
-    robot_loc_ = loc; 
+    robot_dist_traveled_ += sqrt(Sq(delta_loc.x()) + Sq(delta_loc.y()));
+    robot_loc_ = loc;
+    robot_angle_ = angle;
     //cout << "delta: " << delta_loc << endl;
 }
 
@@ -134,7 +138,7 @@ float Navigation::FutureVelocity() {
 float Navigation::GetVelocity(float delta_x) {
     const float old_vel = robot_vel_.x();
     //robot_dist_traveled_ += robot_vel_.x() * time_step;
-    // get he possible new velocity assuming we wont deccelerate
+    // get the possible new velocity assuming we wont deccelerate
     const float poss_new_vel = FutureVelocity();
     // given the next velocity, this is how much distance it would take to slow down to 0.
     const float min_decc_dist = pow(poss_new_vel, 2) / (2 * max_decc);
@@ -159,7 +163,7 @@ void Navigation::Run(float delta_x) {
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = 0;
+    msg.curvature = -1;
     drive_pub_.publish(msg);
     
 }
