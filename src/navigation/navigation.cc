@@ -33,18 +33,19 @@
 #include "navigation.h"
 #include "visualization/visualization.h"
 
+using Eigen::Rotation2Df;
 using Eigen::Vector2f;
 using f1tenth_course::AckermannCurvatureDriveMsg;
 using f1tenth_course::VisualizationMsg;
-using std::string;
-using std::vector;
+using std::abs;
 using std::cout;
 using std::endl;
-using std::sqrt;
-using std::pow;
-using std::min;
-using std::abs;
 using std::max;
+using std::min;
+using std::pow;
+using std::sqrt;
+using std::string;
+using std::vector;
 
 using namespace math_util;
 using namespace ros_helpers;
@@ -107,9 +108,12 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     // need to use the location to be updating our distance
     if (first_odom) {
         robot_loc_ = loc;
+        robot_angle_ = angle;
         first_odom = false;
     }
-    Vector2f delta_loc = loc - robot_loc_;
+    Rotation2Df delta_theta(angle - robot_angle_);
+    Vector2f delta_loc = loc - (delta_theta * robot_loc_);
+
     robot_dist_traveled_ += sqrt(pow(delta_loc.x(), 2) + pow(delta_loc.y(), 2));
     robot_loc_ = loc; 
     //cout << "delta: " << delta_loc << endl;
