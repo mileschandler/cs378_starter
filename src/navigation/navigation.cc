@@ -64,7 +64,7 @@ const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 bool first_odom = true;
 
-const float latency = time_step * 3; // this is approximate, could actually be closer to 0.15
+const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
 } //namespace
 
@@ -113,7 +113,8 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
         first_odom = false;
     }
     cout << "angle " << (angle - robot_angle_) << endl;
-    Rotation2Df delta_theta(angle - robot_angle_);
+    //checking
+    Rotation2Df delta_theta(robot_angle_);
     Vector2f delta_loc = (delta_theta * loc) - robot_loc_;
     // Vector2f delta_loc = loc - robot_loc_;
 
