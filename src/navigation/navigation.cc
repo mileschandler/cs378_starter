@@ -61,6 +61,7 @@ const float max_vel = 1.0;
 const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
+bool first_odom = true;
 
 const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
@@ -102,9 +103,16 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
                                 const Vector2f& vel,
                                 float ang_vel) {
 
-    //accounting for latency here (naiive assuming constant vel)
-    robot_dist_traveled_ += vel.x() * time_step;
-    
+    // robot_dist_traveled_ += vel.x() * time_step;
+    // need to use the location to be updating our distance
+    if (first_odom) {
+        robot_loc_ = loc;
+        first_odom = false;
+    }
+    Vector2f delta_loc = loc - robot_loc_;
+    robot_dist_traveled_ += sqrt(pow(delta_loc.x(), 2) + pow(delta_loc.y(), 2));
+    robot_loc_ = loc; 
+    //cout << "delta: " << delta_loc << endl;
 }
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
