@@ -114,7 +114,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     }
     cout << "angle " << (angle - robot_angle_) << endl;
     //checking
-    Rotation2Df delta_theta(-robot_angle_);
+    Rotation2Df delta_theta(angle - robot_angle_);
     Vector2f delta_loc = (delta_theta * loc) - robot_loc_;
     // Vector2f delta_loc = loc - robot_loc_;
 
@@ -164,7 +164,7 @@ void Navigation::Run(float delta_x) {
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = -1;
+    msg.curvature = 0.02;
     drive_pub_.publish(msg);
     
 }
