@@ -66,7 +66,7 @@ class Navigation {
   float GetVelocity(float delta_x);
 
   // Main function called continously from main
-  void Run(float delta_x);
+  void Run(float delta_x, float theta);
   // Used to set the next target pose.
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 

@@ -146,6 +146,12 @@ int main(int argc, char** argv) {
   
   //distance to travel pos 1
   float dist = stof(argv[1]);
+  float angle = stof(arv[2]);
+  if (angle < -1 ){
+    angle = -1;
+  } else if (angle > 1) {
+    angle = 1;
+  }
   
 
 
@@ -154,7 +160,7 @@ int main(int argc, char** argv) {
   RateLoop loop(20.0);
   while (run_ && ros::ok()) {
     ros::spinOnce();
-    navigation_->Run(dist);
+    navigation_->Run(dist, angle);
     loop.Sleep();
   }
   delete navigation_;

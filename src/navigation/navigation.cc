@@ -162,11 +162,11 @@ float Navigation::GetVelocity(float delta_x) {
     return robot_vel_.x();
 }
 
-void Navigation::Run(float delta_x) {
+void Navigation::Run(float delta_x, float theta) {
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = 0.1;
+    msg.curvature = theta;
     drive_pub_.publish(msg);
     
 }
