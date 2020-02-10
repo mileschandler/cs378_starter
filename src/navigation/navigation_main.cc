@@ -70,6 +70,8 @@ DEFINE_string(init_topic,
               "initialpose",
               "Name of ROS topic for initialization");
 DEFINE_string(map, "maps/GDC1.txt", "Name of vector map file");
+DEFINE_double(curve, 0.0, "angle of curvature from -1 to 1");
+DEFINE_double(dist, 1, "distance in meters to navigate");
 
 bool run_ = true;
 sensor_msgs::LaserScan last_laser_msg_;
@@ -145,13 +147,16 @@ int main(int argc, char** argv) {
   
   
   //distance to travel pos 1
-  float dist = stof(argv[1]);
-  float angle = stof(argv[2]);
+  //float dist = stof(argv[1]);
+  float dist = FLAGS_dist;
+  float angle = FLAGS_curve;
+  //float angle = stof(argv[2]);
   if (angle < -1 ){
     angle = -1;
   } else if (angle > 1) {
     angle = 1;
   }
+  
   
 
 
