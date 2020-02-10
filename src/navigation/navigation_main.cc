@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
   
   //distance to travel pos 1
   float dist = stof(argv[1]);
-  float angle = stof(arv[2]);
+  float angle = stof(argv[2]);
   if (angle < -1 ){
     angle = -1;
   } else if (angle > 1) {
