@@ -152,6 +152,7 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
         }
     }
     robot_free_dist_ = min_free_dist;
+    cout << "FREE DIST " << robot_free_dist_ << endl;
     //set delta_x to the min distance
 }
 
