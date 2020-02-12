@@ -87,6 +87,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   const Vector2f kLaserLoc(0.2, 0);
 
   static vector<Vector2f> point_cloud_;
+  point_cloud_.clear();
   // TODO Convert the LaserScan to a point cloud
   // ###### Big papa psuedocode#######
   for (int pos = 0; pos < (int) msg.ranges.size(); pos++) {
@@ -104,6 +105,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
     //+= kLaserLoc
     // add it to the point cloud list?
   }
+  cout << "PC LEN " << point_cloud_.size() << endl;
   //printf("Laser ranges: %f\n", msg.ranges[0]);
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
