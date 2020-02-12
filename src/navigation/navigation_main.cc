@@ -89,19 +89,22 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   static vector<Vector2f> point_cloud_;
   // TODO Convert the LaserScan to a point cloud
   // ###### Big papa psuedocode#######
-  for (int pos = 0; pos < msg.ranges.size(); pos++) {
+  for (int pos = 0; pos < (int) msg.ranges.size(); pos++) {
     //I dont know if this comes in as just ri
-    float pc_x = msg.ranges[pos] * cos();
-    float pc_y = msg.ranges[pos] * sin();
+    float theta = msg.angle_min + (pos * msg.angle_increment);
+
+    float pc_x = msg.ranges[pos] * cos(theta);
+    float pc_y = msg.ranges[pos] * sin(theta);
     Vector2f pt(pc_x, pc_y);
     pt += kLaserLoc;
-    point_ cloud_.push_back(pt);
+    point_cloud_.push_back(pt);
+    //cout << "PT" << pt.x() << " "  << pt.y() << endl;
 
     // create a new Vector2f(ricos(thetai), risin(thetai))
     //+= kLaserLoc
     // add it to the point cloud list?
   }
-  printf("Laser ranges: %f\n", msg.ranges[0]);
+  //printf("Laser ranges: %f\n", msg.ranges[0]);
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
 }

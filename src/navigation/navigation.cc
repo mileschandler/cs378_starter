@@ -63,6 +63,10 @@ const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 bool first_odom = true;
+const float margin = 5.0;
+const float car_half_width = 14.0;
+const float w = car_half_width + margin;
+const float h = 48.0;
 
 const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
@@ -77,6 +81,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     robot_omega_(0),
     robot_dist_traveled_(0.0),
     robot_decc_(0.0),
+    robot_free_dist_(0),
     robot_prev_state(-1),
     nav_complete_(true),
     nav_goal_loc_(0, 0),
@@ -112,7 +117,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
         robot_angle_ = angle;
         first_odom = false;
     }
-    cout << "angle " << (angle - robot_angle_) << endl;
+    //cout << "angle " << (angle - robot_angle_) << endl;
     //checking
     // Rotation2Df delta_theta(angle - robot_angle_);
     Rotation2Df delta_theta(-robot_angle_);
@@ -126,8 +131,28 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     //cout << "delta: " << delta_loc << endl;
 }
 
+float GetFreeDistance(Vector2f& point) {
+    return point.x() - h;
+
+}
+
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
+
+    float min_free_dist = MAXFLOAT;
+    for (Vector2f point : cloud) {
+        //determine if point is obstacle
+        if (abs(point.y()) <= w){
+            //if so find free distance to point
+            float free_dist = GetFreeDistance(point);
+            if (free_dist < min_free_dist && free_dist >= 0) {
+                min_free_dist = free_dist;
+            }
+            //keep track of this min distance
+        }
+    }
+    robot_free_dist_ = min_free_dist;
+    //set delta_x to the min distance
 }
 
 float Navigation::FutureVelocity() {
@@ -139,6 +164,7 @@ float Navigation::FutureVelocity() {
 
 
 float Navigation::GetVelocity(float delta_x) {
+    delta_x = robot_free_dist_;
     const float old_vel = robot_vel_.x();
     //robot_dist_traveled_ += robot_vel_.x() * time_step;
     // get the possible new velocity assuming we wont deccelerate
@@ -147,7 +173,7 @@ float Navigation::GetVelocity(float delta_x) {
     const float min_decc_dist = pow(poss_new_vel, 2) / (2 * max_decc);
     // if the dist so far + the min decc dist given a new vel is less than delta_x
     float lat_dist = robot_vel_.x() * latency;
-    if ((robot_dist_traveled_ + lat_dist) + min_decc_dist < delta_x) {
+    if (lat_dist + min_decc_dist < delta_x) {
         // we can continue with the new vel
         robot_vel_.x() = poss_new_vel;
     } else {
