@@ -148,12 +148,13 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
             //if so find free distance to point
             float free_dist = GetFreeDistance(point);
             //cout << free_dist << endl;
-            if (free_dist < min_free_dist) {
+            if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
             }
             //keep track of this min distance
         }
     }
+    min_free_dist = min_free_dist == MAXFLOAT ? 0 : min_free_dist;
     robot_free_dist_ = min_free_dist;
     cout << "FREE DIST " << robot_free_dist_ << endl;
     //set delta_x to the min distance
