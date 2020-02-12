@@ -63,10 +63,11 @@ const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 bool first_odom = true;
-const float margin = 5.0;
-const float car_half_width = 14.0;
+const float margin = 0.10;
+const float car_half_width = 0.14;
 const float w = car_half_width + margin;
-const float h = 48.0;
+const float base_to_tip = 0.435;
+const float h = base_to_tip + margin;
 
 const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
@@ -132,7 +133,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 }
 
 float GetFreeDistance(Vector2f& point) {
-    return point.x() - h;
+    return abs(point.x()) - h;
 
 }
 
@@ -143,8 +144,10 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
     for (Vector2f point : cloud) {
         //determine if point is obstacle
         if (abs(point.y()) <= w){
+            //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             float free_dist = GetFreeDistance(point);
+            cout << free_dist << endl;
             if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
             }
