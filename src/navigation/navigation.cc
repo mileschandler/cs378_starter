@@ -64,9 +64,9 @@ const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 bool first_odom = true;
 const float margin = 0.10;
-const float car_half_width = 0.14;
+const float car_half_width = 0.1405;
 const float w = car_half_width + margin;
-const float base_to_tip = 1.0;//0.435;
+const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 
 const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
