@@ -65,6 +65,9 @@ class Navigation {
   // Gets the velocity to publish to the driver for the next time step
   float GetVelocity(float delta_x);
 
+  // Returns the free distance left based on current path and lidar obstacles
+  float UpdateFreeDistance();
+
   // Main function called continously from main
   void Run(float delta_x, float theta);
   // Used to set the next target pose.

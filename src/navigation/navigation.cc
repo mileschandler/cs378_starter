@@ -69,6 +69,8 @@ const float w = car_half_width + margin;
 const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 
+std::vector<Eigen::Vector2f> point_cloud;
+
 const float latency = time_step * 6; // this is approximate, could actually be closer to 0.15
 
 } //namespace
@@ -139,9 +141,19 @@ float GetFreeDistance(Vector2f& point) {
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
+    point_cloud = cloud;
+}
 
+float Navigation::FutureVelocity() {
+    float old = robot_vel_.x();
+    old += max_acc * time_step;
+    return min(old, max_vel);
+}
+
+
+float Navigation::UpdateFreeDistance() {
     float min_free_dist = MAXFLOAT;
-    for (Vector2f point : cloud) {
+    for (Vector2f point : point_cloud) {
         //determine if point is obstacle
         if (abs(point.y()) <= w){
             //cout << "OBSTACLE" << endl;
@@ -155,21 +167,14 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
         }
     }
     min_free_dist = min_free_dist == MAXFLOAT ? 0 : min_free_dist;
-    robot_free_dist_ = min_free_dist;
-    cout << "FREE DIST " << robot_free_dist_ << endl;
+    // robot_free_dist_ = min_free_dist;
+    // cout << "FREE DIST " << robot_free_dist_ << endl;
     //set delta_x to the min distance
+    return min_free_dist;
 }
-
-float Navigation::FutureVelocity() {
-    float old = robot_vel_.x();
-    old += max_acc * time_step;
-    return min(old, max_vel);
-}
-
-
 
 float Navigation::GetVelocity(float delta_x) {
-    delta_x = robot_free_dist_;
+    // delta_x = robot_free_dist_;
     const float old_vel = robot_vel_.x();
     //robot_dist_traveled_ += robot_vel_.x() * time_step;
     // get the possible new velocity assuming we wont deccelerate
@@ -194,6 +199,7 @@ float Navigation::GetVelocity(float delta_x) {
 }
 
 void Navigation::Run(float delta_x, float theta) {
+    delta_x = UpdateFreeDistance();
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
