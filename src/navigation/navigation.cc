@@ -68,6 +68,8 @@ const float car_half_width = 0.1405;
 const float w = car_half_width + margin;
 const float base_to_tip = .42;
 const float h = base_to_tip + margin;
+const float curve_epsilon = 1e-3;
+const float free_dist_cutoff = 0.02;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -134,9 +136,45 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     //cout << "delta: " << delta_loc << endl;
 }
 
-float GetFreeDistance(Vector2f& point) {
-    return point.x() - h;
+//calculates distance from car to obstacle
+float GetFreeDistance(Vector2f& point, float curvature) {
 
+    if (abs((abs(curvature) - curve_epsilon)) >= curve_epsilon) {
+            //practically 0 curvature
+            return point.x() - h;
+    } else {
+        // there is curvature to be accounted for
+        // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
+        float r = 1.0 / curvature;
+        float theta = atan2(point.x(), r - point.y());
+        float omega = atan2(h, r - w);
+        float phi = theta - omega;
+        return r * phi;
+    }
+
+}
+
+//determines if a point is in the car's immediate path trajectory
+bool isObstacle(Vector2f& point, float curvature) {
+    if (abs((abs(curvature) - curve_epsilon)) >= curve_epsilon) {
+        //practically 0 curvature
+        // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
+        return abs(point.y()) <= w;
+    } else {
+        // there is curvature
+        float r = 1.0 / curvature;
+        float r1 = abs(r) - w;
+        float r2 = sqrt(Sq(abs(r) + w) + Sq(h));
+        //signs
+        r1 = r > 0 ? r1 : -1.0 * r1;
+        r2 = r > 0 ? r2 : -1.0 * r2;
+        Vector2f c(0, r);
+        float theta = atan2(point.x(), r - point.y());
+        Vector2f pc_diff = point - c;
+        float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
+
+        return norm_pc >= r1 && norm_pc <= r2 && theta > 0;
+    }
 }
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
@@ -151,15 +189,15 @@ float Navigation::FutureVelocity() {
 }
 
 
-float Navigation::UpdateFreeDistance() {
+float Navigation::UpdateFreeDistance(float curvature) {
     float min_free_dist = MAXFLOAT;
     for (Vector2f point : point_cloud) {
         //determine if point is obstacle
-        if (abs(point.y()) <= w){
-            //cout << "OBSTACLE" << endl;
+        if (isObstacle(point, curvature)){
+            cout << "OBSTACLE" << endl;
             //if so find free distance to point
-            float free_dist = GetFreeDistance(point);
-            //cout << free_dist << endl;
+            float free_dist = GetFreeDistance(point, curvature);
+            cout << free_dist << endl;
             if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
             }
@@ -168,8 +206,10 @@ float Navigation::UpdateFreeDistance() {
     }
     min_free_dist = min_free_dist == MAXFLOAT ? 0 : min_free_dist;
     // robot_free_dist_ = min_free_dist;
-    // cout << "FREE DIST " << robot_free_dist_ << endl;
+    // cout << "FREE DIST " << min_free_dist << endl;
     //set delta_x to the min distance
+    //cutoff for min_free_dist
+    min_free_dist = min_free_dist < free_dist_cutoff ? 0 : min_free_dist;
     return min_free_dist;
 }
 
@@ -199,7 +239,8 @@ float Navigation::GetVelocity(float delta_x) {
 }
 
 void Navigation::Run(float delta_x, float theta) {
-    delta_x = UpdateFreeDistance();
+    delta_x = UpdateFreeDistance(theta);
+    cout << "Free Distance: " << delta_x << endl;
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
