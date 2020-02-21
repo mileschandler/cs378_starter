@@ -97,7 +97,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
     float pc_x = msg.ranges[pos] * cos(theta);
     float pc_y = msg.ranges[pos] * sin(theta);
     Vector2f pt(pc_x, pc_y);
-    pt -= kLaserLoc;
+    pt += kLaserLoc;
     point_cloud_.push_back(pt);
     //cout << "PT" << pt.x() << " "  << pt.y() << endl;
 
