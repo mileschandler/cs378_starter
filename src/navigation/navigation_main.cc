@@ -97,7 +97,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
     float pc_x = msg.ranges[pos] * cos(theta);
     float pc_y = msg.ranges[pos] * sin(theta);
     Vector2f pt(pc_x, pc_y);
-    pt += kLaserLoc;
+    pt -= kLaserLoc;
     point_cloud_.push_back(pt);
     //cout << "PT" << pt.x() << " "  << pt.y() << endl;
 
@@ -105,7 +105,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
     //+= kLaserLoc
     // add it to the point cloud list?
   }
-  cout << "PC LEN " << point_cloud_.size() << endl;
+  //cout << "PC LEN " << point_cloud_.size() << endl;
   //printf("Laser ranges: %f\n", msg.ranges[0]);
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
