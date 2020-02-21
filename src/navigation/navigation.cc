@@ -69,7 +69,7 @@ const float w = car_half_width + margin;
 const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
-const float free_dist_cutoff = 0.02;
+const float free_dist_cutoff = 0.00;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -206,7 +206,7 @@ float Navigation::UpdateFreeDistance(float curvature) {
     }
     min_free_dist = min_free_dist == MAXFLOAT ? 0 : min_free_dist;
     // robot_free_dist_ = min_free_dist;
-    // cout << "FREE DIST " << min_free_dist << endl;
+    cout << "FREE DIST " << min_free_dist << endl;
     //set delta_x to the min distance
     //cutoff for min_free_dist
     min_free_dist = min_free_dist < free_dist_cutoff ? 0 : min_free_dist;
