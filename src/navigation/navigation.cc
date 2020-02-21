@@ -28,6 +28,7 @@
 #include "glog/logging.h"
 #include "ros/ros.h"
 #include "shared/math/math_util.h"
+#include <utility>  
 #include "shared/util/timer.h"
 #include "shared/ros/ros_helpers.h"
 #include "navigation.h"
@@ -70,6 +71,10 @@ const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
+const float curve_delta = 0.25;
+const float c_max = 1.0;
+const float w1 = 0.05;
+const float w2 = -0.05;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -209,7 +214,7 @@ float Navigation::UpdateFreeDistance(float curvature) {
     //set delta_x to the min distance
     //cutoff for min_free_dist
     min_free_dist = min_free_dist < free_dist_cutoff ? 0 : min_free_dist;
-    cout << "FREE DIST " << min_free_dist << endl;
+    //cout << "FREE DIST " << min_free_dist << endl;
     return min_free_dist;
 }
 
@@ -238,13 +243,64 @@ float Navigation::GetVelocity(float delta_x) {
     return robot_vel_.x();
 }
 
+float Navigation::GetClearance(float delta_x, float theta) {
+    //cout << "in get clearance " << point_cloud.size()<< endl;
+    float r = 1.0 / theta;
+    float r1 = abs(r) - w;
+    float r2 = sqrt(Sq(abs(r) + w) + Sq(h));
+    Vector2f c(0.0, r);
+    float min_clearance = c_max;
+    for (Vector2f point : point_cloud) {
+        Vector2f pc_diff = c - point;
+        float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
+        float theta = atan2(point.x(), r - point.y());
+        
+        if ((abs((abs(norm_pc) - r)) < c_max) && (theta > 0) && (theta < 2)) { //TODO idk what theta_max should be so i just set it to 2 lol
+        //cout << "THETA " << theta << " NORM " << norm_pc << endl;
+        //cout << "r " << r <<" r1 " << r1 << " r2 " << r2 << endl;
+            float l = abs(norm_pc) > r ? (abs(norm_pc) - r2) : (r1 - abs(norm_pc));//double check for negative in second case
+            if (l < min_clearance) {
+                //cout << " >>>>>>>>>>>>>>>>>>>>>>>>>>>> new min " << l << endl;
+                // gettings cases where the point is between R and R2 (or R1)
+                // this shouldnt really happen outside of sim..
+                min_clearance = l < 0 ? 0 : l; 
+            }
+        } 
+    }
+    return min_clearance;
+}
+
+std::pair<float, float> Navigation::GetBestPath(float old_delta) {
+    // for each possible path
+    float max_score = 0;
+    std::pair<float, float> best_path;
+    for (float curve = -1; curve < 1; curve += curve_delta) {
+        float delta_x = UpdateFreeDistance(curve);
+        float clearance = GetClearance(delta_x, curve);
+        //cout << "Free Distance: " << delta_x << endl;
+        //cout << "Clearance: " << clearance << endl;
+        //cout << "theta index " << theta << endl;
+        float score = delta_x + (w1 * clearance) + (w2 * old_delta);
+        cout << "SCORE " << score << " curve " << curve << endl;
+        if (score >= max_score) {
+            //cout << "MAX SCORE " << max_score << endl;
+            max_score = score;
+            best_path.first = delta_x;
+            best_path.second = clearance = c_max ? 0 : curve;
+        }
+
+    }
+    return best_path;
+}
+
 void Navigation::Run(float delta_x, float theta) {
-    delta_x = UpdateFreeDistance(theta);
-    cout << "Free Distance: " << delta_x << endl;
-    const float new_vel = GetVelocity(delta_x);
+
+    std::pair<float, float> best_path = GetBestPath(delta_x);
+    cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
+    const float new_vel = GetVelocity(best_path.first);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = theta;
+    msg.curvature = best_path.second;
     drive_pub_.publish(msg);
     
 }

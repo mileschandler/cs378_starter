@@ -62,6 +62,12 @@ class Navigation {
 
   float FutureVelocity();
 
+  std::vector<float> GetScores(float delta_x);
+
+  float GetClearance(float delta_x, float theta);
+  
+  std::pair<float, float> GetBestPath(float old_delta);
+
   // Gets the velocity to publish to the driver for the next time step
   float GetVelocity(float delta_x);
 
