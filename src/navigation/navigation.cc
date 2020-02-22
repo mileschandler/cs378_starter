@@ -316,9 +316,11 @@ void Navigation::Run(float delta_x, float theta) {
     ClearVisualizationMsg(global_viz_msg_);
     
 
-    std::pair<float, float> best_path = GetBestPath(delta_x);
-    cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
-    const float new_vel = GetVelocity(best_path.first);
+    //std::pair<float, float> best_path = GetBestPath(delta_x);
+    //cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
+    
+    delta_x = UpdateFreeDistance(theta);
+    const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
     msg.curvature = theta;//best_path.second;
