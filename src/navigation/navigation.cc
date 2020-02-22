@@ -209,15 +209,14 @@ float Navigation::UpdateFreeDistance(float curvature) {
     float min_free_dist = 2;
     for (Vector2f point : point_cloud) {
         //determine if point is obstacle
-        if (curvature < 0)
+        if (curvature < 0) 
             point.y() = abs(point.y());
         if (isObstacle(point, curvature)) {
-            if (curvature < 0)
-                point.y() = -point.y();
-            //DrawCross(point, 0.5, 0xFF0000, local_viz_msg_);
+            
+            //DrawCross(robot_loc_ + point, 0.5, 0xFF0000, local_viz_msg_);
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
-            float free_dist = GetFreeDistance(point, curvature);
+            float free_dist = GetFreeDistance(point, abs(curvature));
             //cout << free_dist << endl;
             if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
