@@ -50,6 +50,7 @@ using std::vector;
 
 using namespace math_util;
 using namespace ros_helpers;
+using namespace visualization;
 
 namespace {
 ros::Publisher drive_pub_;
@@ -164,7 +165,12 @@ float GetFreeDistance(Vector2f& point, float curvature) {
 
 //determines if a point is in the car's immediate path trajectory
 bool isObstacle(Vector2f& point, float curvature) {
-    if (abs(curvature) < curve_epsilon && abs(curvature) >= 0)
+    if (curvature < 0 && point.y() > 0 )
+        return false;
+
+
+    curvature = abs(curvature);
+    if (curvature < curve_epsilon && curvature >= 0)
     {
         //practically 0 curvature
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
@@ -173,12 +179,12 @@ bool isObstacle(Vector2f& point, float curvature) {
        
         // there is curvature
         float r = 1.0 / curvature;
-        float r1 = abs(r) - w;
-        float r2 = sqrt(Sq(abs(r) + w) + Sq(h));
+        float r1 = r - w;
+        float r2 = sqrt(Sq(r + w) + Sq(h));
         //signs
         //r1 = r > 0 ? r1 : -1.0 * r1;
         //r2 = r > 0 ? r2 : -1.0 * r2;
-        Vector2f c(0, abs(r));
+        Vector2f c(0, r);
         float theta = atan2(point.x(), r - point.y());
         Vector2f pc_diff = point - c;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
@@ -203,10 +209,12 @@ float Navigation::UpdateFreeDistance(float curvature) {
     float min_free_dist = 2;
     for (Vector2f point : point_cloud) {
         //determine if point is obstacle
-        if (isObstacle(point, curvature)){
-            if (curvature < 0) {
-                point.y() = -1 * point.y();
-            }
+        if (curvature < 0)
+            point.y() = abs(point.y());
+        if (isObstacle(point, curvature)) {
+            if (curvature < 0)
+                point.y() = -point.y();
+            //DrawCross(point, 0.5, 0xFF0000, local_viz_msg_);
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             float free_dist = GetFreeDistance(point, curvature);
@@ -295,6 +303,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
             max_score = score;
             best_path.first = delta_x;
             best_path.second = clearance = c_max ? curve : curve;
+            DrawPathOption(curve, delta_x, 1, local_viz_msg_);
         }
 
     }
@@ -303,6 +312,11 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
 
 void Navigation::Run(float delta_x, float theta) {
 
+   // Vector2f p(5,0);
+    ClearVisualizationMsg(local_viz_msg_);
+    ClearVisualizationMsg(global_viz_msg_);
+    
+
     std::pair<float, float> best_path = GetBestPath(delta_x);
     cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     const float new_vel = GetVelocity(best_path.first);
@@ -310,7 +324,7 @@ void Navigation::Run(float delta_x, float theta) {
     msg.velocity = new_vel;
     msg.curvature = best_path.second;
     drive_pub_.publish(msg);
-    
+    viz_pub_.publish(local_viz_msg_);
 }
 
 }  // namespace navigation
