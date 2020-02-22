@@ -320,6 +320,7 @@ void Navigation::Run(float delta_x, float theta) {
     //cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
     delta_x = UpdateFreeDistance(theta);
+    cout << "FREE DIST MOTHER FUCKER " << delta_x << endl;
     const float new_vel = GetVelocity(delta_x);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
