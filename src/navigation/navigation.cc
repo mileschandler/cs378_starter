@@ -72,7 +72,7 @@ const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.25;
-const float c_max = 1.0;
+const float c_max = 0.1;
 const float w1 = 0.05;
 const float w2 = -0.05;
 
@@ -143,17 +143,20 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 
 //calculates distance from car to obstacle
 float GetFreeDistance(Vector2f& point, float curvature) {
-
-    if (abs((abs(curvature) - curve_epsilon)) >= curve_epsilon) {
+    //cout << "curve   :" <<  curvature << endl;
+    if (abs(curvature) < curve_epsilon && abs(curvature) >= 0) {
             //practically 0 curvature
+            //cout << "FOOOO" << endl;
             return point.x() - h;
     } else {
         // there is curvature to be accounted for
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
-        float r = 1.0 / curvature;
-        float theta = atan2(point.x(), abs(r - point.y()));
-        float omega = atan2(h, abs(r) - w);
+        float r = 1.0 / abs(curvature);
+        float theta = atan2(point.x(), r - point.y());
+        //cout << "theta " << theta << " curve " << curvature << endl;
+        float omega = atan2(h, r - w);
         float phi = theta - omega;
+        //cout << "R*PHI >> " << r * phi << endl;
         return r * phi;
     }
 
@@ -161,19 +164,21 @@ float GetFreeDistance(Vector2f& point, float curvature) {
 
 //determines if a point is in the car's immediate path trajectory
 bool isObstacle(Vector2f& point, float curvature) {
-    if (abs((abs(curvature) - curve_epsilon)) >= curve_epsilon) {
+    if (abs(curvature) < curve_epsilon && abs(curvature) >= 0)
+    {
         //practically 0 curvature
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         return abs(point.y()) <= w;
     } else {
+       
         // there is curvature
         float r = 1.0 / curvature;
         float r1 = abs(r) - w;
         float r2 = sqrt(Sq(abs(r) + w) + Sq(h));
         //signs
-        r1 = r > 0 ? r1 : -1.0 * r1;
-        r2 = r > 0 ? r2 : -1.0 * r2;
-        Vector2f c(0, r);
+        //r1 = r > 0 ? r1 : -1.0 * r1;
+        //r2 = r > 0 ? r2 : -1.0 * r2;
+        Vector2f c(0, abs(r));
         float theta = atan2(point.x(), r - point.y());
         Vector2f pc_diff = point - c;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
@@ -195,10 +200,13 @@ float Navigation::FutureVelocity() {
 
 
 float Navigation::UpdateFreeDistance(float curvature) {
-    float min_free_dist = MAXFLOAT;
+    float min_free_dist = 2;
     for (Vector2f point : point_cloud) {
         //determine if point is obstacle
         if (isObstacle(point, curvature)){
+            if (curvature < 0) {
+                point.y() = -1 * point.y();
+            }
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             float free_dist = GetFreeDistance(point, curvature);
@@ -207,9 +215,9 @@ float Navigation::UpdateFreeDistance(float curvature) {
                 min_free_dist = free_dist;
             }
             //keep track of this min distance
-        }
+        } 
     }
-    min_free_dist = min_free_dist == MAXFLOAT ? 0 : min_free_dist;
+    //min_free_dist = min_free_dist == MAXFLOAT ? 2 : min_free_dist;
     // robot_free_dist_ = min_free_dist;
     //set delta_x to the min distance
     //cutoff for min_free_dist
@@ -245,7 +253,7 @@ float Navigation::GetVelocity(float delta_x) {
 
 float Navigation::GetClearance(float delta_x, float theta) {
     //cout << "in get clearance " << point_cloud.size()<< endl;
-    float r = 1.0 / theta;
+    float r = 1.0 / theta; //maybe
     float r1 = abs(r) - w;
     float r2 = sqrt(Sq(abs(r) + w) + Sq(h));
     Vector2f c(0.0, r);
@@ -253,7 +261,7 @@ float Navigation::GetClearance(float delta_x, float theta) {
     for (Vector2f point : point_cloud) {
         Vector2f pc_diff = c - point;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
-        float theta = atan2(point.x(), r - point.y());
+        float theta = atan2(point.x(), abs(r - point.y()));  //maybe
         
         if ((abs((abs(norm_pc) - r)) < c_max) && (theta > 0) && (theta < 2)) { //TODO idk what theta_max should be so i just set it to 2 lol
         //cout << "THETA " << theta << " NORM " << norm_pc << endl;
@@ -274,19 +282,19 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
     // for each possible path
     float max_score = 0;
     std::pair<float, float> best_path;
-    for (float curve = -1; curve < 1; curve += curve_delta) {
+    for (float curve = -1; curve <= 1; curve += curve_delta) {
         float delta_x = UpdateFreeDistance(curve);
         float clearance = GetClearance(delta_x, curve);
         //cout << "Free Distance: " << delta_x << endl;
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
-        float score = delta_x + (w1 * clearance) + (w2 * old_delta);
+        float score = delta_x; //+ (w1 * clearance) + (w2 * old_delta);
         cout << "SCORE " << score << " curve " << curve << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
             max_score = score;
             best_path.first = delta_x;
-            best_path.second = clearance = c_max ? 0 : curve;
+            best_path.second = clearance = c_max ? curve : curve;
         }
 
     }
