@@ -145,6 +145,8 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 //calculates distance from car to obstacle
 float GetFreeDistance(Vector2f& point, float curvature) {
     //cout << "curve   :" <<  curvature << endl;
+   
+    assert(curvature > 0);
     if (curvature < curve_epsilon) {
             //practically 0 curvature
             //cout << "FOOOO" << endl;
@@ -153,7 +155,7 @@ float GetFreeDistance(Vector2f& point, float curvature) {
         // there is curvature to be accounted for
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         float r = 1.0 / curvature;
-        float theta = atan2(point.x(), r - point.y());
+        float theta = atan2(point.x(), r - abs(point.y()));
         //cout << "theta " << theta << " curve " << curvature << endl;
         float omega = atan2(h, r - w);
         float phi = theta - omega;
@@ -168,8 +170,12 @@ bool isObstacle(Vector2f& point, float curvature) {
     if (curvature < 0 && point.y() > 0 )
         return false;
 
+    if (curvature > 0 && point.y() < 0 )
+        return false;
+
 
     curvature = abs(curvature);
+
     if (curvature < curve_epsilon && curvature >= 0)
     {
         //practically 0 curvature
@@ -185,7 +191,7 @@ bool isObstacle(Vector2f& point, float curvature) {
         //r1 = r > 0 ? r1 : -1.0 * r1;
         //r2 = r > 0 ? r2 : -1.0 * r2;
         Vector2f c(0, r);
-        float theta = atan2(point.x(), r - point.y());
+        float theta = atan2(point.x(), r - abs(point.y()));
         Vector2f pc_diff = point - c;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
 
@@ -209,15 +215,15 @@ float Navigation::UpdateFreeDistance(float curvature) {
     float min_free_dist = 2;
     for (Vector2f point : point_cloud) {
         //determine if point is obstacle
-        if (curvature < 0) 
-            point.y() = abs(point.y());
+        
         if (isObstacle(point, curvature)) {
             
             //DrawCross(robot_loc_ + point, 0.5, 0xFF0000, local_viz_msg_);
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             float free_dist = GetFreeDistance(point, abs(curvature));
-            //cout << free_dist << endl;
+            free_dist = max(free_dist, (float)0);
+            cout << free_dist << endl;
             if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
             }
