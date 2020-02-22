@@ -151,8 +151,8 @@ float GetFreeDistance(Vector2f& point, float curvature) {
         // there is curvature to be accounted for
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         float r = 1.0 / curvature;
-        float theta = atan2(point.x(), r - point.y());
-        float omega = atan2(h, r - w);
+        float theta = atan2(point.x(), abs(r - point.y()));
+        float omega = atan2(h, abs(r) - w);
         float phi = theta - omega;
         return r * phi;
     }
