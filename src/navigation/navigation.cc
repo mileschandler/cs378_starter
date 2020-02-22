@@ -145,14 +145,14 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 //calculates distance from car to obstacle
 float GetFreeDistance(Vector2f& point, float curvature) {
     //cout << "curve   :" <<  curvature << endl;
-    if (abs(curvature) < curve_epsilon && abs(curvature) >= 0) {
+    if (curvature < curve_epsilon) {
             //practically 0 curvature
             //cout << "FOOOO" << endl;
             return point.x() - h;
     } else {
         // there is curvature to be accounted for
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
-        float r = 1.0 / abs(curvature);
+        float r = 1.0 / curvature;
         float theta = atan2(point.x(), r - point.y());
         //cout << "theta " << theta << " curve " << curvature << endl;
         float omega = atan2(h, r - w);
@@ -321,7 +321,7 @@ void Navigation::Run(float delta_x, float theta) {
     const float new_vel = GetVelocity(best_path.first);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = best_path.second;
+    msg.curvature = theta;//best_path.second;
     drive_pub_.publish(msg);
     viz_pub_.publish(local_viz_msg_);
 }
