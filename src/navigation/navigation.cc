@@ -73,9 +73,9 @@ const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.25;
-const float c_max = 0.1;
+const float c_max = 0.3;
 const float w1 = 0.5;
-const float w2 = -0.05;
+const float w2 = -2;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -143,15 +143,20 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 }
 
 //calculates distance from car to obstacle
-float GetFreeDistance(Vector2f& point, float curvature) {
+std::pair<float, float> GetFreeDistance(Vector2f& point, float curvature) {
     //cout << "curve   :" <<  curvature << endl;
-   
+    std::pair<float, float> delta_x_phi;
+    float free_distance;
     assert(curvature > 0);
     if (curvature < curve_epsilon) {
             //practically 0 curvature
             //cout << "FOOOO" << endl;
-            return point.x() - h;
-    } else {
+            free_distance = point.x() - h;
+            delta_x_phi.first = free_distance;
+            delta_x_phi.second = -1;
+    }
+    else
+    {
         // there is curvature to be accounted for
         // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         float r = 1.0 / curvature;
@@ -161,9 +166,11 @@ float GetFreeDistance(Vector2f& point, float curvature) {
         float phi = theta - omega;
         assert(phi > 0);
         //cout << "R*PHI >> " << r * phi << endl;
-        return r * phi;
+        free_distance = r * phi;
+        delta_x_phi.first = free_distance;
+        delta_x_phi.second = phi;
     }
-
+    return delta_x_phi;
 }
 
 //determines if a point is in the car's immediate path trajectory
@@ -212,9 +219,12 @@ float Navigation::FutureVelocity() {
 }
 
 
-float Navigation::UpdateFreeDistance(float curvature) {
-    float min_free_dist = 3;
-    for (Vector2f point : point_cloud) {
+std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
+    // float min_free_dist = 3;
+    std::pair<float, float> delta_x_phi;
+    delta_x_phi.first = 3.0;
+    for (Vector2f point : point_cloud)
+    {
         //determine if point is obstacle
         
         if (isObstacle(point, curvature)) {
@@ -222,12 +232,13 @@ float Navigation::UpdateFreeDistance(float curvature) {
             //DrawCross(robot_loc_ + point, 0.5, 0xFF0000, local_viz_msg_);
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
-            float free_dist = GetFreeDistance(point, abs(curvature));
+            std::pair<float, float> trial_delta_x_phi = GetFreeDistance(point, abs(curvature));
             assert(free_dist >= 0);
             // free_dist = max(free_dist, (float)0);
             //cout << free_dist << endl;
-            if (free_dist < min_free_dist && free_dist >= 0) {
-                min_free_dist = free_dist;
+            if (trial_delta_x_phi.first < delta_x_phi.first && trial_delta_x_phi.first >= 0) {
+                delta_x_phi.first = trial_delta_x_phi.first;
+                delta_x_phi.second = trial_delta_x_phi.second;
             }
             //keep track of this min distance
         } 
@@ -236,9 +247,9 @@ float Navigation::UpdateFreeDistance(float curvature) {
     // robot_free_dist_ = min_free_dist;
     //set delta_x to the min distance
     //cutoff for min_free_dist
-    min_free_dist = min_free_dist < free_dist_cutoff ? 0 : min_free_dist;
+    delta_x_phi.first = delta_x_phi.first < free_dist_cutoff ? 0 : delta_x_phi.first;
     //cout << "FREE DIST " << min_free_dist << endl;
-    return min_free_dist;
+    return delta_x_phi;
 }
 
 float Navigation::GetVelocity(float delta_x) {
@@ -268,14 +279,14 @@ float Navigation::GetVelocity(float delta_x) {
 
 float Navigation::GetClearance(float delta_x, float curve) {
     //cout << "in get clearance " << point_cloud.size()<< endl;
-    float r = 1.0 / abs(curve); //maybe
+    float r = 1.0 / curve; //maybe
     float r1 = r - w;
     float r2 = sqrt(Sq(r + w) + Sq(h));
     Vector2f c(0.0, r);
     float min_clearance = c_max;
     for (Vector2f point : point_cloud) {
-        if (curve < 0)
-            point.y() = abs(point.y());
+        // if (curve < 0)
+        //     point.y() = abs(point.y());
         Vector2f pc_diff = c - point;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
         float theta = atan2(point.x(), r - point.y());  //maybe
@@ -295,26 +306,52 @@ float Navigation::GetClearance(float delta_x, float curve) {
     return min_clearance;
 }
 
+float GetDistanceRemaining(float phi, float curvature) {
+    //so...I need what?
+    // I need to know where my goal location is
+    Vector2f goal(2.0, 0.0);
+    //I need to know where Im going to end up
+    ////okay well we have the straight line case
+    //fuck that
+    if (abs(curvature <= curve_epsilon)) {
+        return 0;
+    }
+    //// and the curve case
+
+    /*
+    I need:
+    - r
+    - phi
+    */
+    float r = 1.0 / abs(curvature);
+    float y = r - (cos(phi) * r);
+    float x = r * sin(phi);
+    Vector2f end_pos(x, y);
+    Vector2f diff = goal - end_pos;
+    return diff.norm();
+}
+
 std::pair<float, float> Navigation::GetBestPath(float old_delta) {
     // for each possible path
     float max_score = -MAXFLOAT;
     std::pair<float, float> best_path;
     for (float curve = -1; curve <= 1; curve += curve_delta) {
-        float delta_x = UpdateFreeDistance(curve);
-        float clearance = GetClearance(delta_x, curve);
-        //cout << "Free Distance: " << delta_x << endl;
+        std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
+        // I need phi from this ^^
+        float clearance = GetClearance(delta_x_phi.first, curve);
+        float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve);
+        cout << "distance to goal: " << distance_to_goal << "curve: " << curve << endl;
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
-        float score = delta_x + (w1 * clearance);// + (w2 * old_delta);
+        float score = delta_x_phi.first + (w1 * clearance) + (w2 * distance_to_goal);
         cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
             max_score = score;
-            best_path.first = delta_x;
+            best_path.first = delta_x_phi.first;
             best_path.second = curve;
-            DrawPathOption(curve, delta_x, 1, local_viz_msg_);
+            DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         }
-
     }
     return best_path;
 }
@@ -329,7 +366,7 @@ void Navigation::Run(float delta_x, float theta) {
     std::pair<float, float> best_path = GetBestPath(delta_x);
     cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
-    delta_x = UpdateFreeDistance(theta);
+    // delta_x = UpdateFreeDistance(theta);
     //cout << "FREE DIST MOTHER FUCKER " << delta_x << endl;
     const float new_vel = GetVelocity(best_path.first);
     AckermannCurvatureDriveMsg msg;

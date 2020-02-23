@@ -72,7 +72,7 @@ class Navigation {
   float GetVelocity(float delta_x);
 
   // Returns the free distance left based on current path and lidar obstacles
-  float UpdateFreeDistance(float curvature);
+  std::pair<float, float> UpdateFreeDistance(float curvature);
 
   // Main function called continously from main
   void Run(float delta_x, float theta);
