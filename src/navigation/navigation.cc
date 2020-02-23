@@ -73,9 +73,9 @@ const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.1;
-const float c_max = 0.1;
+const float c_max = 0.05;
 const float w1 = 0.4;
-const float w2 = -0.1;
+const float w2 = -0.005;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -187,7 +187,7 @@ bool isObstacle(Vector2f& point, float curvature) {
     if (curvature < curve_epsilon && curvature >= 0)
     {
         //practically 0 curvature
-        // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
+        cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         return abs(point.y()) <= w;
     } else {
        
@@ -200,7 +200,8 @@ bool isObstacle(Vector2f& point, float curvature) {
         //r2 = r > 0 ? r2 : -1.0 * r2;
         Vector2f c(0, r);
         float theta = atan2(point.x(), r - abs(point.y()));
-        Vector2f pc_diff = point - c;
+        Vector2f Bug(point.x(), abs(point.y()));
+        Vector2f pc_diff = Bug - c;
         float norm_pc = sqrt(Sq(pc_diff.x()) + Sq(pc_diff.y()));
 
         return norm_pc >= r1 && norm_pc <= r2 && theta > 0;
@@ -222,7 +223,7 @@ float Navigation::FutureVelocity() {
 std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
     // float min_free_dist = 3;
     std::pair<float, float> delta_x_phi;
-    delta_x_phi.first = 3.0;
+    delta_x_phi.first = 5.0;
     for (Vector2f point : point_cloud)
     {
         //determine if point is obstacle
@@ -254,7 +255,7 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
 
 float Navigation::GetVelocity(float delta_x) {
     // delta_x = robot_free_dist_;
-    const float old_vel = robot_vel_.x();
+    // const float old_vel = robot_vel_.x();
     //robot_dist_traveled_ += robot_vel_.x() * time_step;
     // get the possible new velocity assuming we wont deccelerate
     const float poss_new_vel = FutureVelocity();
@@ -273,7 +274,7 @@ float Navigation::GetVelocity(float delta_x) {
         }
     }
 
-    cout << old_vel << " ==> " << robot_vel_.x() << " dist: " << robot_dist_traveled_ << endl;
+    // cout << old_vel << " ==> " << robot_vel_.x() << " dist: " << robot_dist_traveled_ << endl;
     return robot_vel_.x();
 }
 
@@ -309,7 +310,7 @@ float Navigation::GetClearance(float delta_x, float curve) {
 float GetDistanceRemaining(float phi, float curvature) {
     //so...I need what?
     // I need to know where my goal location is
-    Vector2f goal(2.0, 0.0);
+    Vector2f goal(4.0, 0.0);
     //I need to know where Im going to end up
     ////okay well we have the straight line case
     //fuck that
@@ -330,10 +331,10 @@ float GetDistanceRemaining(float phi, float curvature) {
     assert(x >= 0);
     Vector2f end_pos(x, y);
     Vector2f diff = goal - end_pos;
-    cout << "Vector bitch" << diff << endl;
+    // cout << "Vector bitch" << diff << endl;
     //pseudo closest approach
-    float delta = 0.6;
-    return diff.norm() - (delta * curvature);
+    //float delta = 0.6;
+    return diff.norm(); //- (delta * curvature);
 }
 
 std::pair<float, float> Navigation::GetBestPath(float old_delta) {
@@ -346,16 +347,18 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
         float clearance = GetClearance(delta_x_phi.first, curve);
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve);
         cout << "distance to goal: " << distance_to_goal << "curve: " << curve << endl;
+        cout << "R*PHI >> " << delta_x_phi.first << endl;
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
+        clearance = 0;
         float score = delta_x_phi.first + (w1 * clearance) + (w2 * distance_to_goal);
-        cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
+        // cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
             max_score = score;
             best_path.first = delta_x_phi.first;
             best_path.second = curve;
-            DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
+            DrawPathOption(curve, delta_x_phi.first, 0, local_viz_msg_);
         }
     }
     return best_path;
