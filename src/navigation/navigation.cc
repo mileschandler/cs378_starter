@@ -75,7 +75,7 @@ const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.1;
 const float c_max = 0.05;
 const float w1 = 0.4;
-const float w2 = -0.5;
+const float w2 = -0.1;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
