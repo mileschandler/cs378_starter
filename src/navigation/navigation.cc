@@ -331,7 +331,9 @@ float GetDistanceRemaining(float phi, float curvature) {
     Vector2f end_pos(x, y);
     Vector2f diff = goal - end_pos;
     cout << "Vector bitch" << diff << endl;
-    return diff.norm();
+    //pseudo closest approach
+    float delta = 0.6;
+    return diff.norm() - (delta * curvature);
 }
 
 std::pair<float, float> Navigation::GetBestPath(float old_delta) {
