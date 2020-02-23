@@ -73,7 +73,7 @@ const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.25;
-const float c_max = 0.5;
+const float c_max = 0.1;
 const float w1 = 0.5;
 const float w2 = -0.05;
 
@@ -168,10 +168,10 @@ float GetFreeDistance(Vector2f& point, float curvature) {
 
 //determines if a point is in the car's immediate path trajectory
 bool isObstacle(Vector2f& point, float curvature) {
-    if (curvature < 0 && point.y() > 0 )
+    if (curvature < 0 && point.y() > w )
         return false;
 
-    if (curvature > 0 && point.y() < 0 )
+    if (curvature > 0 && point.y() < -w )
         return false;
 
 
@@ -223,7 +223,8 @@ float Navigation::UpdateFreeDistance(float curvature) {
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             float free_dist = GetFreeDistance(point, abs(curvature));
-            free_dist = max(free_dist, (float)0);
+            assert(free_dist >= 0);
+            // free_dist = max(free_dist, (float)0);
             //cout << free_dist << endl;
             if (free_dist < min_free_dist && free_dist >= 0) {
                 min_free_dist = free_dist;
