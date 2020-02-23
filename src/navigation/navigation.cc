@@ -351,7 +351,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
         // clearance = 0;
-        float score = delta_x_phi.first + (w2 * distance_to_goal);   // +(w1 * clearance); //+ (w2 * distance_to_goal);
+        float score = delta_x_phi.first; // + (w2 * distance_to_goal);   // +(w1 * clearance); //+ (w2 * distance_to_goal);
         // cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
