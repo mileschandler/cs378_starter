@@ -176,15 +176,17 @@ int main(int argc, char** argv) {
   } else if (angle > 1) {
     angle = 1;
   }
-  
-  
 
-
-  
+  ros::topic::waitForMessage<nav_msgs::Odometry>(FLAGS_odom_topic, n);
+  ros::spinOnce();
+  // navigation_->UpdateOdometry();
 
   RateLoop loop(20.0);
-  while (run_ && ros::ok()) {
+  while (run_ && ros::ok())
+  {
     ros::spinOnce();
+    // cout << "sleep count: " << count << endl;
+
     navigation_->Run(dist, angle);
     loop.Sleep();
   }

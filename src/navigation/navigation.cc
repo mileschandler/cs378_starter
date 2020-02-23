@@ -75,7 +75,7 @@ const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.1;
 const float c_max = 0.05;
 const float w1 = 0.4;
-const float w2 = -0.005;
+const float w2 = -0.5;
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -187,7 +187,7 @@ bool isObstacle(Vector2f& point, float curvature) {
     if (curvature < curve_epsilon && curvature >= 0)
     {
         //practically 0 curvature
-        cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
+        // cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
         return abs(point.y()) <= w;
     } else {
        
@@ -310,7 +310,7 @@ float Navigation::GetClearance(float delta_x, float curve) {
 float GetDistanceRemaining(float phi, float curvature) {
     //so...I need what?
     // I need to know where my goal location is
-    Vector2f goal(4.0, 0.0);
+    Vector2f goal(5.0, 0.0);
     //I need to know where Im going to end up
     ////okay well we have the straight line case
     //fuck that
@@ -344,14 +344,14 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
     for (float curve = -1; curve <= 1; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // I need phi from this ^^
-        float clearance = GetClearance(delta_x_phi.first, curve);
+        // float clearance = GetClearance(delta_x_phi.first, curve);
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve);
         cout << "distance to goal: " << distance_to_goal << "curve: " << curve << endl;
         cout << "R*PHI >> " << delta_x_phi.first << endl;
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
-        clearance = 0;
-        float score = delta_x_phi.first + (w1 * clearance) + (w2 * distance_to_goal);
+        // clearance = 0;
+        float score = delta_x_phi.first + (w2 * distance_to_goal);//+ (w1 * clearance) + (w2 * distance_to_goal);
         // cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
