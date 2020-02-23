@@ -313,7 +313,7 @@ float GetDistanceRemaining(float phi, float curvature) {
     //I need to know where Im going to end up
     ////okay well we have the straight line case
     //fuck that
-    if (abs(curvature <= curve_epsilon)) {
+    if (abs(curvature) <= curve_epsilon) {
         return 0;
     }
     //// and the curve case
@@ -325,9 +325,12 @@ float GetDistanceRemaining(float phi, float curvature) {
     */
     float r = 1.0 / abs(curvature);
     float y = r - (cos(phi) * r);
+    assert(y >= 0);
     float x = r * sin(phi);
+    assert(x >= 0);
     Vector2f end_pos(x, y);
     Vector2f diff = goal - end_pos;
+    cout << "Vector bitch" << diff << endl;
     return diff.norm();
 }
 
