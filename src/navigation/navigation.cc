@@ -65,7 +65,7 @@ const float max_acc = 3.0;
 const float max_decc = 3.0;
 const float time_step = (1.0 / 20);
 bool first_odom = true;
-const float margin = 0.05;
+const float margin = 0.03;
 const float car_half_width = 0.1405;
 const float w = car_half_width + margin;
 const float base_to_tip = .42;
@@ -344,14 +344,14 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
     for (float curve = -1; curve <= 1; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // I need phi from this ^^
-        float clearance = GetClearance(delta_x_phi.first, curve);
+        // float clearance = GetClearance(delta_x_phi.first, curve);
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve);
         cout << "distance to goal: " << distance_to_goal << "curve: " << curve << endl;
         cout << "R*PHI >> " << delta_x_phi.first << endl;
         //cout << "Clearance: " << clearance << endl;
         //cout << "theta index " << theta << endl;
         // clearance = 0;
-        float score = delta_x_phi.first + (w2 * distance_to_goal) + (w1 * clearance); //+ (w2 * distance_to_goal);
+        float score = delta_x_phi.first + (w2 * distance_to_goal);   // +(w1 * clearance); //+ (w2 * distance_to_goal);
         // cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
