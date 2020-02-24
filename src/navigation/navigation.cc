@@ -322,9 +322,7 @@ float GetDistanceRemaining(float phi, float curvature) {
     assert(x >= 0);
     Vector2f end_pos(x, y);
     Vector2f diff = goal - end_pos;
-    // cout << "Vector bitch" << diff << endl;
-    //pseudo closest approach
-    //float delta = 0.6;
+    
     return diff.norm(); //- (delta * curvature);
 }
 
