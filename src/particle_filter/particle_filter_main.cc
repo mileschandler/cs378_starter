@@ -257,6 +257,7 @@ void SignalHandler(int) {
 }
 
 int main(int argc, char** argv) {
+  cout << "main" << endl;
   google::ParseCommandLineFlags(&argc, &argv, false);
   signal(SIGINT, SignalHandler);
   // Initialize ROS.
@@ -271,8 +272,8 @@ int main(int argc, char** argv) {
       n.advertise<geometry_msgs::Pose2D>("localization", 1);
   laser_publisher_ =
       n.advertise<sensor_msgs::LaserScan>("scan", 1);
-
+  cout << "process about to be called" << endl;
   ProcessLive(&n);
-
+  
   return 0;
 }

@@ -96,11 +96,31 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
+  prev_odom_loc_ = odom_loc;
+  prev_odom_angle_ = odom_angle;
+  particles_.clear();
+  for (int i = 0; i < FLAGS_num_particles; i++)
+  {
+    Particle p;
+    p.loc = odom_loc; //add noise here
+    p.angle = odom_angle; //add noise here
+    particles_.push_back(p);
+  }
 }
 
 void ParticleFilter::Initialize(const string& map_file,
                                 const Vector2f& loc,
                                 const float angle) {
+  cout << "init?" << endl;
+  cout << loc << endl;
+  cout << angle << endl;
+  // std::vector<Particle> init_particles_;
+  for (int i = 0; i < FLAGS_num_particles; i++) {
+    Particle p;
+    p.loc = loc; //add noise here
+    p.angle = angle; //add noise here
+    particles_.push_back(p);
+  }
 }
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
