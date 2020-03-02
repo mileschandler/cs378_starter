@@ -97,19 +97,23 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
+
+  //cout << "Observe : " << endl;
   const float k = 0.1;
   float std_dev = k * (odom_loc - prev_odom_loc_).norm();
-  Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
   prev_odom_loc_ = odom_loc;
   prev_odom_angle_ = odom_angle;
-  particles_.clear();
+  //particles_.clear();
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
+    Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
+    //cout << "ERROR: " << std_dev << endl;
     p.loc = odom_loc + error; //add noise here
     p.angle = odom_angle + rng_.Gaussian(0, std_dev); //add noise here
     particles_.push_back(p);
   }
+
 }
 
 void ParticleFilter::Initialize(const string& map_file,

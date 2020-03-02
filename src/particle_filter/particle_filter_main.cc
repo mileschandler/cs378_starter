@@ -105,7 +105,11 @@ void InitializeMsgs() {
 void PublishParticles() {
   vector<particle_filter::Particle> particles;
   particle_filter_.GetParticles(&particles);
-  for (const particle_filter::Particle& p : particles) {
+  //cout << "PARTICLES>>>>: " << particles.size() << endl;
+  for (const particle_filter::Particle &p : particles)
+  {
+    //cout << "draw : " << endl;
+    //cout  << "PARTICLE LOC: " << p.loc << endl;
     DrawParticle(p.loc, p.angle, vis_msg_);
   }
 }
