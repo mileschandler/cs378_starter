@@ -360,10 +360,11 @@ void Navigation::Run(float delta_x, float theta) {
     
 
     // std::pair<float, float> best_path = GetBestPath(delta_x);
-    // cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
+    //  cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
     const std::pair<float,float> x = UpdateFreeDistance(theta);
     // const float new_vel = GetVelocity(best_path.first);
+    cout << "dist left: " << x.first << endl;
     const float new_vel = GetVelocity(x.first);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
