@@ -230,7 +230,7 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
         
         if (isObstacle(point, curvature)) {
             
-            //DrawCross(robot_loc_ + point, 0.5, 0xFF0000, local_viz_msg_);
+            DrawCross(point, 0.5, 0xFF0000, local_viz_msg_);
             //cout << "OBSTACLE" << endl;
             //if so find free distance to point
             std::pair<float, float> trial_delta_x_phi = GetFreeDistance(point, abs(curvature));
@@ -359,14 +359,16 @@ void Navigation::Run(float delta_x, float theta) {
     ClearVisualizationMsg(global_viz_msg_);
     
 
-    std::pair<float, float> best_path = GetBestPath(delta_x);
-    cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
+    // std::pair<float, float> best_path = GetBestPath(delta_x);
+    // cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
-    
-    const float new_vel = GetVelocity(best_path.first);
+    const std::pair<float,float> x = UpdateFreeDistance(theta);
+    // const float new_vel = GetVelocity(best_path.first);
+    const float new_vel = GetVelocity(x.first);
     AckermannCurvatureDriveMsg msg;
     msg.velocity = new_vel;
-    msg.curvature = best_path.second;
+    // msg.curvature = best_path.second;
+    msg.curvature = theta;
     drive_pub_.publish(msg);
     viz_pub_.publish(local_viz_msg_);
 }
