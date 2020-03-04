@@ -102,15 +102,15 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
   const float k = 0.01;
   float delta_x = (odom_loc - prev_odom_loc_).norm();
   float std_dev = k * delta_x;
-  float delta_theta = k * (odom_angle - prev_odom_angle_);
+  float delta_theta = odom_angle - prev_odom_angle_;
   
   //particles_.clear();
-  for (Particle p : particles_)
+  for (Particle &p : particles_)
   {
     Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
     //cout << "ERROR: " << std_dev << endl;
-    p.loc += (odom_loc - prev_odom_loc_) + error;     //add noise here
-    p.angle = odom_angle + rng_.Gaussian(0, delta_theta); //add noise here
+    p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;     //add noise here
+    p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
   prev_odom_loc_ = odom_loc;
@@ -136,6 +136,7 @@ void ParticleFilter::Initialize(const string& map_file,
     p.angle = angle + rng_.Gaussian(0, 0.01); //add noise here
     particles_.push_back(p);
   }
+  odom_initialized_ = true;
 }
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
