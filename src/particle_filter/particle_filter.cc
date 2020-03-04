@@ -103,8 +103,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
   float delta_x = (odom_loc - prev_odom_loc_).norm();
   float std_dev = k * delta_x;
   float delta_theta = k * (odom_angle - prev_odom_angle_);
-  prev_odom_loc_ = odom_loc;
-  prev_odom_angle_ = odom_angle;
+  
   //particles_.clear();
   for (Particle p : particles_)
   {
@@ -114,7 +113,8 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     p.angle = odom_angle + rng_.Gaussian(0, delta_theta); //add noise here
     // particles_.push_back(p);
   }
-
+  prev_odom_loc_ = odom_loc;
+  prev_odom_angle_ = odom_angle;
 }
 
 void ParticleFilter::Initialize(const string& map_file,
