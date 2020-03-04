@@ -99,9 +99,10 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
 
   //cout << "Observe : " << endl;
-  const float k = 0.1;
+  const float k = 0.01;
   float delta_x = (odom_loc - prev_odom_loc_).norm();
   float std_dev = k * delta_x;
+  float delta_theta = k * (odom_angle - prev_odom_angle_);
   prev_odom_loc_ = odom_loc;
   prev_odom_angle_ = odom_angle;
   //particles_.clear();
@@ -110,7 +111,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
     //cout << "ERROR: " << std_dev << endl;
     p.loc += (odom_loc - prev_odom_loc_) + error;     //add noise here
-    p.angle = odom_angle + rng_.Gaussian(0, std_dev); //add noise here
+    p.angle = odom_angle + rng_.Gaussian(0, delta_theta); //add noise here
     // particles_.push_back(p);
   }
 
@@ -124,14 +125,15 @@ void ParticleFilter::Initialize(const string& map_file,
   cout << angle << endl;
   // std::vector<Particle> init_particles_;
   // Particle p;
+  particles_.clear();
   prev_odom_angle_ = angle;
   prev_odom_loc_ = loc;
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
-    Vector2f error(rng_.Gaussian(0, 1), rng_.Gaussian(0, 1));
+    Vector2f error(rng_.Gaussian(0, 0.01), rng_.Gaussian(0, 0.01));
     p.loc = loc + error; //add noise here
-    p.angle = angle + rng_.Gaussian(0, 1); //add noise here
+    p.angle = angle + rng_.Gaussian(0, 0.01); //add noise here
     particles_.push_back(p);
   }
 }
