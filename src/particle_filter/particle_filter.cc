@@ -95,6 +95,16 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
                                   float angle_max) {
 }
 
+// Vector2f ParticleFilter::GetLocation(Vector2f p0, Vector2f p1) {
+//   //make a line from p0 to p1
+//   for (auto line : map_.lines) {
+//     //if line collides with our line
+//     if (!Intersection(reference)) {
+//       //find new loc
+//     //else
+//       //keep
+//   }
+// }
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
 
@@ -109,7 +119,8 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
   {
     Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
     //cout << "ERROR: " << std_dev << endl;
-    p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;     //add noise here
+    // p.loc = GetLocation(p.loc, p.loc + odom_loc);
+    p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;                 //add noise here
     p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
@@ -123,6 +134,7 @@ void ParticleFilter::Initialize(const string& map_file,
   cout << "init?" << endl;
   cout << loc << endl;
   cout << angle << endl;
+  map_.Load("maps/GDC1.txt");
   // std::vector<Particle> init_particles_;
   // Particle p;
   particles_.clear();
