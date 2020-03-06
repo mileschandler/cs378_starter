@@ -108,24 +108,24 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
 
-  // //cout << "Observe : " << endl;
-  // const float k = 0.4;
-  // float delta_x = (odom_loc - prev_odom_loc_).norm();
-  // float std_dev = k * delta_x;
-  // float delta_theta = odom_angle - prev_odom_angle_;
-  // //cout << std_dev << endl;
-  // //particles_.clear();
-  // for (Particle &p : particles_)
-  // {
-  //   Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
-  //   //cout << "ERROR: " << std_dev << endl;
-  //   // p.loc = GetLocation(p.loc, p.loc + odom_loc);
-  //   p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;                 //add noise here
-  //   p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
-  //   // particles_.push_back(p);
-  // }
-  // prev_odom_loc_ = odom_loc;
-  // prev_odom_angle_ = odom_angle;
+  //cout << "Observe : " << endl;
+  const float k = 0.4;
+  float delta_x = (odom_loc - prev_odom_loc_).norm();
+  float std_dev = k * delta_x;
+  float delta_theta = odom_angle - prev_odom_angle_;
+  //cout << std_dev << endl;
+  //particles_.clear();
+  for (Particle &p : particles_)
+  {
+    Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
+    //cout << "ERROR: " << std_dev << endl;
+    // p.loc = GetLocation(p.loc, p.loc + odom_loc);
+    p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;                 //add noise here
+    p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
+    // particles_.push_back(p);
+  }
+  prev_odom_loc_ = odom_loc;
+  prev_odom_angle_ = odom_angle;
 }
 
 void ParticleFilter::Initialize(const string& map_file,
@@ -138,8 +138,8 @@ void ParticleFilter::Initialize(const string& map_file,
   // std::vector<Particle> init_particles_;
   // Particle p;
   particles_.clear();
-  prev_odom_angle_ = angle;
-  prev_odom_loc_ = loc;
+  // prev_odom_angle_ = angle;
+  // prev_odom_loc_ = loc;
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
