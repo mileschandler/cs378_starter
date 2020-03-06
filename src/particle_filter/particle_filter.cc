@@ -112,6 +112,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     prev_odom_angle_ = odom_angle;
     prev_odom_loc_ = odom_loc;
     odom_initialized_ = true;
+    cout << "test" << endl;
     return;
   }
   //cout << "Observe : " << endl;
@@ -162,6 +163,7 @@ void ParticleFilter::Initialize(const string& map_file,
     p.angle = angle + rng_.Gaussian(0, 0.07); //add noise here
     particles_.push_back(p);
   }
+  odom_initialized_ = false;
 }
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
