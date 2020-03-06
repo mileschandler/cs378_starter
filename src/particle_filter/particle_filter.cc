@@ -127,6 +127,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
+  cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
   prev_odom_loc_ = odom_loc;
   prev_odom_angle_ = odom_angle;
 }
@@ -138,11 +139,9 @@ void ParticleFilter::Initialize(const string& map_file,
   cout << loc << endl;
   cout << angle << endl;
   map_.Load("maps/GDC1.txt");
-  // std::vector<Particle> init_particles_;
-  // Particle p;
+ 
   particles_.clear();
-  // prev_odom_angle_ = angle;
-  // prev_odom_loc_ = loc;
+  
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
