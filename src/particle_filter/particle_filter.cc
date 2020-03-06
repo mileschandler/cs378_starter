@@ -158,8 +158,8 @@ void ParticleFilter::Initialize(const string& map_file,
   {
     Particle p;
     Vector2f error(rng_.Gaussian(0, 0.07), rng_.Gaussian(0, 0.07));
-    p.loc += error; //add noise here
-    p.angle += rng_.Gaussian(0, 0.07); //add noise here
+    p.loc = loc + error; //add noise here
+    p.angle = angle + rng_.Gaussian(0, 0.07); //add noise here
     particles_.push_back(p);
   }
 }
