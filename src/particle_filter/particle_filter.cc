@@ -44,6 +44,7 @@ using std::swap;
 using std::vector;
 using Eigen::Vector2f;
 using Eigen::Vector2i;
+using Eigen::Rotation2Df;
 using vector_map::VectorMap;
 
 DEFINE_double(num_particles, 50, "Number of particles");
@@ -110,8 +111,10 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
 
   //cout << "Observe : " << endl;
   const float k = 0.4;
-  float delta_x = (odom_loc - prev_odom_loc_).norm();
-  float std_dev = k * delta_x;
+  Rotation2Df rotation(-prev_odom_angle_);
+  Vector2f delta_x = rotation * (odom_loc - prev_odom_loc_);
+  float delta_x_magnitude = delta_x.norm();
+  float std_dev = k * delta_x_magnitude;
   float delta_theta = odom_angle - prev_odom_angle_;
   //cout << std_dev << endl;
   //particles_.clear();
@@ -120,7 +123,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
     //cout << "ERROR: " << std_dev << endl;
     // p.loc = GetLocation(p.loc, p.loc + odom_loc);
-    p.loc = p.loc + (odom_loc - prev_odom_loc_) + error;                 //add noise here
+    p.loc = p.loc + delta_x + error;                 //add noise here
     p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
