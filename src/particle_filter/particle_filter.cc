@@ -127,7 +127,8 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
-  cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
+  if (particles_.size() > 0)
+    cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
   prev_odom_loc_ = odom_loc;
   prev_odom_angle_ = odom_angle;
 }
