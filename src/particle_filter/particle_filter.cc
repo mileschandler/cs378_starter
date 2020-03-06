@@ -111,10 +111,15 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
 
   //cout << "Observe : " << endl;
   const float k = 0.4;
+
   Rotation2Df rotation(-prev_odom_angle_);
   Vector2f delta_x = rotation * (odom_loc - prev_odom_loc_);
   float delta_x_magnitude = delta_x.norm();
+
   float std_dev = k * delta_x_magnitude;
+
+  //i think we need to translate this theta to the map reference
+  //check page 6 of slideset 11. We just need to update the theta.
   float delta_theta = odom_angle - prev_odom_angle_;
   //cout << std_dev << endl;
   //particles_.clear();
