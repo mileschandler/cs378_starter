@@ -116,7 +116,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     return;
   }
   //cout << "Observe : " << endl;
-  const float k = 0.4;
+  const float k = 0.02;
 
   Rotation2Df rotation(-prev_odom_angle_);
   Vector2f delta_x = rotation * (odom_loc - prev_odom_loc_);
