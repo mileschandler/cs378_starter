@@ -108,14 +108,14 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 // }
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
-  // cout << "Observe : " << endl;
+  cout << "Observe prev: " << prev_odom_loc_ << "Observe current: " << odom_loc << endl;
   const float k = 0.4;
-  // if (!odom_initialized_) {
-  //   prev_odom_angle_ = odom_angle;
-  //   prev_odom_loc_ = odom_loc;
-  //   // odom_initialized_ = true;
-  //   return;
-  // }
+  if (!odom_initialized_) {
+    prev_odom_angle_ = odom_angle;
+    prev_odom_loc_ = odom_loc;
+    odom_initialized_ = true;
+    return;
+  }
   if (odom_initialized_) {
     Rotation2Df rotation(-prev_odom_angle_);
     Vector2f delta_x = rotation * (odom_loc - prev_odom_loc_);
@@ -159,14 +159,12 @@ void ParticleFilter::Initialize(const string& map_file,
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
-    Vector2f error(rng_.Gaussian(0, 0.07), rng_.Gaussian(0, 0.07));
-    p.loc = loc + error; //add noise here
-    p.angle = angle + rng_.Gaussian(0, 0.07); //add noise here
+    // Vector2f error(rng_.Gaussian(0, 0.07), rng_.Gaussian(0, 0.07));
+    p.loc = loc;// + error; //add noise here
+    p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
     particles_.push_back(p);
   }
-  prev_odom_angle_ = angle;
-  prev_odom_loc_ = loc;
-  odom_initialized_ = true;
+  odom_initialized_ = false;
 }
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
