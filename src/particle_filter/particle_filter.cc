@@ -96,16 +96,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
                                   float angle_max) {
 }
 
-// Vector2f ParticleFilter::GetLocation(Vector2f p0, Vector2f p1) {
-//   //make a line from p0 to p1
-//   for (auto line : map_.lines) {
-//     //if line collides with our line
-//     if (!Intersection(reference)) {
-//       //find new loc
-//     //else
-//       //keep
-//   }
-// }
+
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
   cout << "Observe prev: " << prev_odom_loc_ << "Observe current: " << odom_loc << endl;
@@ -123,13 +114,9 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
 
     float std_dev = k * delta_x_magnitude;
 
-    //i think we need to translate this theta to the map reference
-    //check page 6 of slideset 11. We just need to update the theta.
     float delta_theta = odom_angle - prev_odom_angle_;
     cout << "delta theta: " << delta_theta << endl;
-    //cout << std_dev << endl;
-    //particles_.clear();
-
+   
     Vector2f avg_loc(0, 0);
     float avg_theta = 0;
     int count = 0;
@@ -139,14 +126,10 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     {
       Rotation2Df rotation2(p.angle);
       Vector2f error(rng_.Gaussian(0, std_dev / 2 ), rng_.Gaussian(0, std_dev));
-      //cout << "ERROR: " << std_dev << endl;
-      // p.loc = GetLocation(p.loc, p.loc + odom_loc);
       Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error);
       p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
-        //set p.loc to the average loc of all the particles
-        cout << "INTERSECTION>>>>>>>>>>>>::: " << avg_loc / count << endl;
         p.loc = avg_loc / count;
         p.angle = avg_theta / count;
       }
@@ -154,10 +137,8 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       avg_loc += p.loc;
       avg_theta += p.angle;
       ++count;
-      // particles_.push_back(p);
     }
-    if (particles_.size() > 0)
-      cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
+    
     prev_odom_loc_ = odom_loc;
     prev_odom_angle_ = odom_angle;
   }
@@ -176,7 +157,6 @@ void ParticleFilter::Initialize(const string& map_file,
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
-    // Vector2f error(rng_.Gaussian(0, 0.07), rng_.Gaussian(0, 0.07));
     p.loc = loc;// + error; //add noise here
     p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
     particles_.push_back(p);
