@@ -125,10 +125,11 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
   //particles_.clear();
   for (Particle &p : particles_)
   {
+    Rotation2Df rotation2(p.angle);
     Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
     //cout << "ERROR: " << std_dev << endl;
     // p.loc = GetLocation(p.loc, p.loc + odom_loc);
-    p.loc = p.loc + delta_x + error;                 //add noise here
+    p.loc = rotation2 * (p.loc + delta_x + error);                 //add noise here
     p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
     // particles_.push_back(p);
   }
