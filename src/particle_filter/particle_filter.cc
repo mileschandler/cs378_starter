@@ -141,10 +141,10 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       Vector2f error(rng_.Gaussian(0, std_dev / 2 ), rng_.Gaussian(0, std_dev));
       //cout << "ERROR: " << std_dev << endl;
       // p.loc = GetLocation(p.loc, p.loc + odom_loc);
-      
+      Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error);
       p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
-      if (map_.Intersects(odom_loc, p.loc + (rotation2 * car_length))) {
+      if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         //set p.loc to the average loc of all the particles
         cout << "INTERSECTION>>>>>>>>>>>>::: " << avg_loc / count << endl;
         p.loc = avg_loc / count;
