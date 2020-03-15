@@ -46,6 +46,8 @@ using Eigen::Vector2f;
 using Eigen::Vector2i;
 using Eigen::Rotation2Df;
 using vector_map::VectorMap;
+using std::max;
+using std::min;
 
 DEFINE_double(num_particles, 50, "Number of particles");
 
@@ -75,7 +77,41 @@ void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
                                             float angle_min,
                                             float angle_max,
                                             vector<Vector2f>* scan_ptr) {
-
+	//TODO Based on the car location and angle we look for intersections in the map
+	// x inc = rnage_maxcostheta
+	// y inc = range_maxsintheta
+	vector<Vector2f> our_pred;
+	cout << "angle: " << angle << endl;
+	const float bound_angle = 2.35619;
+	float min_angle = math_util::AngleMod(angle - bound_angle); // math_util::AngleDiff(angle, bound_angle);
+	float max_angle = math_util::AngleMod(angle + bound_angle); //math_util::AngleMod(angle + bound_angle);
+	cout << "angle_min: " << min_angle << endl;
+	cout << "angle_max: " << max_angle << endl;
+	const float increment = 0.05;
+	int num_viz = int((2 * bound_angle) / increment);
+	float iter_angle = min_angle;
+	cout << "num_viz: " << num_viz << endl;
+	for (int i = 0; i < num_viz; i += 1) {
+		iter_angle = math_util::AngleMod(iter_angle + increment);
+		//cout << "iter_angle: " << iter_angle << endl;
+		float x_inc = range_max * cos(iter_angle);
+		float y_inc = range_max * sin(iter_angle);
+		Vector2f point(loc.x() + x_inc, loc.y() + y_inc);
+		Vector2f min_point(0.0, 0.0);
+		for (auto line : map_.lines) {
+			Vector2f inter(0.0, 0.0);
+			if (line.Intersection(loc, point, &inter)) {
+				//our_pred.push_back(inter);
+				if ((inter - loc).norm() < (min_point - loc).norm()) {
+					min_point = inter;
+				}
+			}
+		}
+		if (map_.Intersects(loc, min_point)) {
+			our_pred.push_back(min_point);
+		}
+	}
+	*scan_ptr = our_pred;
 }
 
 void ParticleFilter::Update(const vector<float>& ranges,
@@ -96,16 +132,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
                                   float angle_max) {
 }
 
-// Vector2f ParticleFilter::GetLocation(Vector2f p0, Vector2f p1) {
-//   //make a line from p0 to p1
-//   for (auto line : map_.lines) {
-//     //if line collides with our line
-//     if (!Intersection(reference)) {
-//       //find new loc
-//     //else
-//       //keep
-//   }
-// }
+
 void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
                                      const float odom_angle) {
   cout << "Observe prev: " << prev_odom_loc_ << "Observe current: " << odom_loc << endl;
@@ -146,7 +173,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         //set p.loc to the average loc of all the particles
-        cout << "INTERSECTION>>>>>>>>>>>>::: " << avg_loc / count << endl;
+        //cout << "INTERSECTION>>>>>>>>>>>>::: " << avg_loc / count << endl;
         p.loc = avg_loc / count;
         p.angle = avg_theta / count;
       }
@@ -157,7 +184,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       // particles_.push_back(p);
     }
     if (particles_.size() > 0)
-      cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
+      //cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl;
     prev_odom_loc_ = odom_loc;
     prev_odom_angle_ = odom_angle;
   }
@@ -185,7 +212,23 @@ void ParticleFilter::Initialize(const string& map_file,
 }
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
-}
+	//TODO here we just need to compute the mean location, angle and then set
+	float x = 0.0;
+	float y = 0.0;
+	float ang = 0.0;
+	int count = 0;
+	for (Particle p : particles_) {
+		x += p.loc.x();
+		y += p.loc.y();
+		ang += p.angle;
+		count += 1;
+	}
+	x /= count;
+	y /= count;
+	Vector2f avg(x, y);
+	*loc = avg;
+	*angle = ang / count;
 
+}
 
 }  // namespace particle_filter
