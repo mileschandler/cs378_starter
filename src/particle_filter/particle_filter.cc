@@ -124,7 +124,7 @@ void ParticleFilter::Update(const vector<float>& ranges,
                             Particle* p_ptr) {
   //ranges holds s values
   //calculate the weight here
-  int num_rays = 10;
+  int num_rays = 30;
   vector<float> scan_ptr;
   float gamma = 1.0 / num_rays;
   float sigma = 0.05;
@@ -149,6 +149,20 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
                                   float range_max,
                                   float angle_min,
                                   float angle_max) {
+  /*
+  CP6:
+  Use only every 10th ray (108 rays total per scan)
+  First implement the simplest model (pure Gaussian, with stddev~0.05m)
+  Test in areas where the map is accurate (no unexpected observations)
+  Tune gamma to prevent overconfidence
+  idea for pseudocode:
+  Iterate through each particle:
+    grab the predicted lidarscan from vectormap's GetPredictedScan which returns ranges? from the point
+    ^^ this means I also need the base truth of ranges for the true particle location
+    log[(p(st|xt))] ~ -gamma summed from 1 to n over (si -shati)^2 / sigma^2 
+      -- gamma has a range from 1/n (where n is the number of rays you are considering) to 1
+
+  */
   for (Particle &p : particles_) {
     Update(ranges, range_min, range_max, angle_min, angle_max, &p);
   }
@@ -228,38 +242,37 @@ void ParticleFilter::Initialize(const string& map_file,
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
 	//TODO here we just need to compute the mean location, angle and then set
-	float x = 0.0;
-	float y = 0.0;
-	float ang = 0.0;
-	int count = 0;
+	// float x = 0.0;
+	// float y = 0.0;
+	// float ang = 0.0;
+	// int count = 0;
   //implement my CP6 changes here
-  /*
-  CP6:
-  Use only every 10th ray (108 rays total per scan)
-  First implement the simplest model (pure Gaussian, with stddev~0.05m)
-  Test in areas where the map is accurate (no unexpected observations)
-  Tune gamma to prevent overconfidence
-  idea for pseudocode:
-  Iterate through each particle:
-    grab the predicted lidarscan from vectormap's GetPredictedScan which returns ranges? from the point
-    ^^ this means I also need the base truth of ranges for the true particle location
-    log[(p(st|xt))] ~ -gamma summed from 1 to n over (si -shati)^2 / sigma^2 
-      -- gamma has a range from 1/n (where n is the number of rays you are considering) to 1
+  if (particles_.size() > 0) {
+    Particle max_p = particles_[0];
 
-  */
+    for (Particle p : particles_) {
+      if (p.weight < max_p.weight) {
+        max_p = p;
+      }
+    }
 
-	for (Particle p : particles_) {
-    cout << "curious???????? " << p.weight << endl;
-		x += p.loc.x();
-		y += p.loc.y();
-		ang += p.angle;
-		count += 1;
-	}
-	x /= count;
-	y /= count;
-	Vector2f avg(x, y);
-	*loc = avg;
-	*angle = ang / count;
+    *loc = max_p.loc;
+    *angle = max_p.angle;
+  }
+
+
+// 	for (Particle p : particles_) {
+//     cout << "curious???????? " << p.weight << endl;
+// 		x += p.loc.x();
+// 		y += p.loc.y();
+// 		ang += p.angle;
+// 		count += 1;
+// 	}
+// 	x /= count;
+// 	y /= count;
+// 	Vector2f avg(x, y);
+// 	*loc = avg;
+// 	*angle = ang / count;
 
 }
 
