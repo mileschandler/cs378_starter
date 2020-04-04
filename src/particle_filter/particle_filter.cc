@@ -36,6 +36,8 @@
 
 #include "vector_map/vector_map.h"
 
+#include <math.h>
+
 
 using std::cout;
 using std::endl;
@@ -120,6 +122,23 @@ void ParticleFilter::Update(const vector<float>& ranges,
                             float angle_min,
                             float angle_max,
                             Particle* p_ptr) {
+  //ranges holds s values
+  //calculate the weight here
+  int num_rays = 10;
+  vector<float> scan_ptr;
+  float gamma = 1.0 / num_rays;
+  float sigma = 0.05;
+  map_.GetPredictedScan(p_ptr->loc, range_min, range_max, angle_min, angle_max, num_rays, &scan_ptr);
+
+  float weight = 0;
+  for (int i = 0; i < num_rays; i++) {
+    cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
+    weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
+  }
+  weight *= -gamma;
+  // cout << "weight: " << weight << endl;
+  p_ptr -> weight = weight;
+
 }
 
 void ParticleFilter::Resample() {
@@ -130,6 +149,9 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
                                   float range_max,
                                   float angle_min,
                                   float angle_max) {
+  for (Particle &p : particles_) {
+    Update(ranges, range_min, range_max, angle_min, angle_max, &p);
+  }
 }
 
 
@@ -165,9 +187,8 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error);
       p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
+      // if the particle intersects with the map set it to the average of the points that dont intersect
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
-        //set p.loc to the average loc of all the particles
-        //cout << "INTERSECTION>>>>>>>>>>>>::: " << avg_loc / count << end;
         p.loc = avg_loc / count;
         p.angle = avg_theta / count;
       }
@@ -211,7 +232,24 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
 	float y = 0.0;
 	float ang = 0.0;
 	int count = 0;
+  //implement my CP6 changes here
+  /*
+  CP6:
+  Use only every 10th ray (108 rays total per scan)
+  First implement the simplest model (pure Gaussian, with stddev~0.05m)
+  Test in areas where the map is accurate (no unexpected observations)
+  Tune gamma to prevent overconfidence
+  idea for pseudocode:
+  Iterate through each particle:
+    grab the predicted lidarscan from vectormap's GetPredictedScan which returns ranges? from the point
+    ^^ this means I also need the base truth of ranges for the true particle location
+    log[(p(st|xt))] ~ -gamma summed from 1 to n over (si -shati)^2 / sigma^2 
+      -- gamma has a range from 1/n (where n is the number of rays you are considering) to 1
+
+  */
+
 	for (Particle p : particles_) {
+    cout << "curious???????? " << p.weight << endl;
 		x += p.loc.x();
 		y += p.loc.y();
 		ang += p.angle;
