@@ -118,7 +118,6 @@ void PublishPredictedScan() {
   //cout << "robot_loc before: " << robot_loc << endl;
   particle_filter_.GetLocation(&robot_loc, &robot_angle);
   //this might be dumb, but idk
-  // DrawParticle(p.loc, p.angle, vis_msg_);
   DrawPoint(robot_loc, 0, vis_msg_);
   //cout << "robot_loc after: " << robot_loc << endl;
   vector<Vector2f> predicted_scan;
