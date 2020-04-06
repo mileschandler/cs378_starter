@@ -135,7 +135,7 @@ void ParticleFilter::Update(const vector<float>& ranges,
   //calculate the weight here
   int num_rays = 1081;
   vector<float> scan_ptr;
-  float gamma = 1.0 / (num_rays);
+  float gamma = 1.0 / (num_rays / 2);
   float sigma = 0.05;
   map_.GetPredictedScan(p_ptr->loc, range_min, range_max, angle_min, angle_max, num_rays, &scan_ptr);
 
@@ -197,16 +197,17 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     // cout << "angle_max: " << max_angle << endl;
     const float increment = (angle_max - angle_min) / 1081;
     float iter_angle = min_angle;
+    const float lidar_offset = 0.2;
     //change this loop
     for (unsigned int i = 0; i < ranges.size(); i += 1) {
-      if (true) {
-        iter_angle = math_util::AngleMod(iter_angle + increment);
+      iter_angle = math_util::AngleMod(iter_angle + increment);
+      if (ranges[i] < range_max) {
         //cout << "iter_angle: " << iter_angle << endl;
         float x_inc = ranges[i] * cos(iter_angle);
         float y_inc = ranges[i] * sin(iter_angle);
-        Vector2f point(max_p.loc.x() + x_inc, max_p.loc.y() + y_inc);
+        Vector2f point(max_p.loc.x() + lidar_offset + x_inc, max_p.loc.y() + y_inc);
         best_pred.push_back(point);
-      }
+      } 
     }
   }
 
