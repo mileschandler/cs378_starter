@@ -66,6 +66,7 @@ using visualization::DrawArc;
 using visualization::DrawPoint;
 using visualization::DrawLine;
 using visualization::DrawParticle;
+using visualization::DrawCross;
 
 // Create command line arguements
 DEFINE_string(laser_topic, "/scan", "Name of ROS topic for LIDAR data");
@@ -118,7 +119,8 @@ void PublishPredictedScan() {
   //cout << "robot_loc before: " << robot_loc << endl;
   particle_filter_.GetLocation(&robot_loc, &robot_angle);
   //this might be dumb, but idk
-  DrawPoint(robot_loc, 0, vis_msg_);
+  // DrawPoint(robot_loc, 0, vis_msg_);
+  DrawCross(robot_loc, 0.3, kColor, vis_msg_);
   //cout << "robot_loc after: " << robot_loc << endl;
   vector<Vector2f> predicted_scan;
   particle_filter_.GetPredictedPointCloud(

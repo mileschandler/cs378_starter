@@ -290,25 +290,37 @@ void ParticleFilter::Initialize(const string& map_file,
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
 	//TODO here we just need to compute the mean location, angle and then set
-	float x = 0.0;
-	float y = 0.0;
-	float ang = 0.0;
-	int count = 0;
+	// float x = 0.0;
+	// float y = 0.0;
+	// float ang = 0.0;
+	// int count = 0;
 
 
-	for (Particle p : particles_) {
-    // cout << "curious???????? " << p.weight << endl;
-		x += p.loc.x();
-		y += p.loc.y();
-		ang += p.angle;
-		count += 1;
-	}
-	x /= count;
-	y /= count;
-	Vector2f avg(x, y);
-	*loc = avg;
-	*angle = ang / count;
+	// for (Particle p : particles_) {
+  //   // cout << "curious???????? " << p.weight << endl;
+	// 	x += p.loc.x();
+	// 	y += p.loc.y();
+	// 	ang += p.angle;
+	// 	count += 1;
+	// }
+	// x /= count;
+	// y /= count;
+	// Vector2f avg(x, y);
+	// *loc = avg;
+	// *angle = ang / count;
 
+  if (particles_.size() > 0) {
+    Particle max_p = particles_[0];
+
+    for (Particle p : particles_) {
+      if (p.weight > max_p.weight) {
+        max_p = p;
+      }
+    }
+    *loc = max_p.loc;
+    *angle = max_p.angle;
+
+  }
 }
 
 }  // namespace particle_filter
