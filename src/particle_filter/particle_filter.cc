@@ -150,7 +150,60 @@ void ParticleFilter::Update(const vector<float>& ranges,
 
 }
 
+float ParticleFilter::ConfigWeights () {
+  float max_weight = 0;
+  float weight_sum = 0;
+  for (Particle p : particles_) {
+    if (p.weight > max_weight) {
+      max_weight = p.weight;
+    }
+  }
+
+  for (Particle p : particles_) {
+    // float w_prime = p.weight / max_weight;
+    p.weight = log(p.weight) - log(max_weight);
+    weight_sum += p.weight;
+  }
+
+  return weight_sum;
+}
+
 void ParticleFilter::Resample() {
+
+  vector<Particle> new_particles;
+  int sum_W = ConfigWeights(); // Let W = sum of all weights wi
+  
+  for (int i = 0; i < FLAGS_num_particles; i++) { // Repeat N times
+    // Draw a random number between 0 and W
+    float x = rand() % (sum_W + 1);
+    float w_prime = 0; // w’ = 0
+    for (Particle p: particles_) { // for each particle weight wi
+      w_prime += p.weight;
+      if (w_prime > x) {
+          Particle r;
+          r.loc = p.loc;// + error; // add noise here
+          r.angle = p.angle;//  +rng_.Gaussian(0, 0.07); // add noise here
+          //r weight we need to calculate
+          // possible convert back to regular weight?
+          new_particles.push_back(r);
+      }
+    }
+  }
+
+  particles_ = new_particles;
+
+  /*
+    for each particle weight wi
+      w’ = w’ + wi
+      if w’ > x:
+        Replicate particle i
+          Particle p;
+          p.loc = loc;// + error; //add noise here
+          p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
+          new_particles.push_back(p);
+        break for
+  */
+  
 }
 
 void ParticleFilter::ObserveLaser(const vector<float>& ranges,
@@ -197,7 +250,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     // cout << "angle_max: " << max_angle << endl;
     const float increment = (angle_max - angle_min) / 1081;
     float iter_angle = min_angle;
-    const float lidar_offset = 0.2;
+    const float lidar_offset = 0.0;
     //change this loop
     for (unsigned int i = 0; i < ranges.size(); i += 1) {
       iter_angle = math_util::AngleMod(iter_angle + increment);
@@ -234,7 +287,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
 
     float std_dev = k * delta_x_magnitude;
 
-    float delta_theta = odom_angle - prev_odom_angle_;
+    float delta_theta = math_util::AngleMod(odom_angle - prev_odom_angle_);
     // cout << "delta theta: " << delta_theta << endl;
    
     Vector2f avg_loc(0, 0);
@@ -248,7 +301,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       Vector2f error(rng_.Gaussian(0, std_dev / 2 ), rng_.Gaussian(0, std_dev));
       Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error);
-      p.angle = p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta); //add noise here
+      p.angle = math_util::AngleMod(p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta)); //add noise here
       // if the particle intersects with the map set it to the average of the points that dont intersect
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         p.loc = avg_loc / count;
