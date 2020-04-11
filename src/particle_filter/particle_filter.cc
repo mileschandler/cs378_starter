@@ -61,6 +61,7 @@ DEFINE_double(num_particles, 50, "Number of particles");
 namespace particle_filter {
 
 vector<Vector2f> best_pred;
+float distance_traveled;
 
 config_reader::ConfigReader config_reader_({"config/particle_filter.lua"});
 
@@ -135,23 +136,39 @@ void ParticleFilter::Update(const vector<float>& ranges,
   //calculate the weight here
   int num_rays = 1081;
   vector<float> scan_ptr;
-  float gamma = 1.0 / (num_rays / 2);
-  float sigma = 0.05;
+  float gamma = -1.0 / (num_rays / 3);
+  float sigma = 0.15;
   map_.GetPredictedScan(p_ptr->loc, range_min, range_max, angle_min, angle_max, num_rays, &scan_ptr);
+  float smin = 0.5;
+  float smax = 15;
+  float dshort = 0.03;
+  float dlong = 0.15;
 
   float weight = 0;
   for (int i = 0; i < num_rays; i+=10) {
     // cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
-    weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
+    float s_i = ranges[i];  //true
+    float s_hat = scan_ptr[i]; //predicted
+    if (ranges[i] >= smin && ranges[i] <= smax) {
+      // weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
+    //change to robust
+      if (s_i < (s_hat - dshort)) {
+        weight += (pow(dshort, 2) / pow(sigma, 2));
+      } else if (s_i > (s_hat + dlong)) {
+        weight += (pow(dlong, 2) / pow(sigma, 2));
+      } else {
+        weight += (pow(s_i - s_hat, 2) / pow(sigma, 2));
+      }
+    }
   }
-  weight *= -gamma;
+  weight *= gamma;
   // cout << "weight: " << weight << endl;
   p_ptr -> weight = weight;
 
 }
 
 float ParticleFilter::ConfigWeights () {
-  float max_weight = 0;
+  float max_weight = INT_MIN;
   float weight_sum = 0;
   for (Particle p : particles_) {
     if (p.weight > max_weight) {
@@ -161,7 +178,9 @@ float ParticleFilter::ConfigWeights () {
 
   for (Particle p : particles_) {
     // float w_prime = p.weight / max_weight;
-    p.weight = log(p.weight) - log(max_weight);
+    cout << p.weight << endl;
+    p.weight = p.weight - max_weight;
+    cout << p.weight << endl;
     weight_sum += p.weight;
   }
 
@@ -171,14 +190,19 @@ float ParticleFilter::ConfigWeights () {
 void ParticleFilter::Resample() {
 
   vector<Particle> new_particles;
-  int sum_W = ConfigWeights(); // Let W = sum of all weights wi
+  float sum_W = ConfigWeights(); // Let W = sum of all weights wi
+  // cout <<"sumW: " << sum_W << endl;
+  int count = 0;
   
   for (int i = 0; i < FLAGS_num_particles; i++) { // Repeat N times
+    // cout << "hi" << endl;
     // Draw a random number between 0 and W
-    float x = rand() % (sum_W + 1);
+    float x = abs(float(rand()) / float((RAND_MAX)) * sum_W);
+    // cout << "x: " << x << endl;
     float w_prime = 0; // w’ = 0
     for (Particle p: particles_) { // for each particle weight wi
-      w_prime += p.weight;
+      w_prime += abs(p.weight);
+      // cout <<"w_prime: " << w_prime << endl;
       if (w_prime > x) {
           Particle r;
           r.loc = p.loc;// + error; // add noise here
@@ -186,11 +210,19 @@ void ParticleFilter::Resample() {
           //r weight we need to calculate
           // possible convert back to regular weight?
           new_particles.push_back(r);
+          break;
       }
     }
+    count += 1;
+  }
+  cout << particles_.size() << endl;
+  if (new_particles.size() != 0) {
+    particles_ = new_particles;
+  } else {
+    cout << "newp empty" << endl;
   }
 
-  particles_ = new_particles;
+  cout << particles_.size() << endl;
 
   /*
     for each particle weight wi
@@ -225,7 +257,10 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
       -- gamma has a range from 1/n (where n is the number of rays you are considering) to 1
 
   */
+  // cout << "angle_min: " << angle_min << " angle_max: " << angle_max << endl;
   for (Particle &p : particles_) {
+    // float my_angle_min = (p.angle + angle_min);
+    // float my_angle_max = (p.angle + angle_max);
     Update(ranges, range_min, range_max, angle_min, angle_max, &p);
   }
 
@@ -242,25 +277,42 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     
     //
     best_pred.clear();
-    // cout << "angle: " << max_p.angle << endl;
-    const float bound_angle = 2.35619;
-    float min_angle = math_util::AngleMod(max_p.angle - bound_angle); // math_util::AngleDiff(angle, bound_angle);
-    // float max_angle = math_util::AngleMod(max_p.angle + bound_angle); //math_util::AngleMod(angle + bound_angle);
-    // cout << "angle_min: " << min_angle << endl;
-    // cout << "angle_max: " << max_angle << endl;
-    const float increment = (angle_max - angle_min) / 1081;
-    float iter_angle = min_angle;
-    const float lidar_offset = 0.0;
+    cout << "angle: " << max_p.angle << endl;
+    // const float bound_angle = 2.35619;
+    float min_angle = math_util::AngleMod(max_p.angle + angle_min); // math_util::AngleDiff(angle, bound_angle);
+    // float max_angle = math_util::AngleMod(max_p.angle + angle_max); //math_util::AngleMod(angle + bound_angle);
+    cout << "angle_min: " << angle_min << endl;
+    cout << "angle_max: " << angle_max << endl;
+
+    //This loop creates a vector for the point cloud so that we can publish the "best" point's lidar scan 
+    const float increment = (angle_max - angle_min) / ranges.size();
+    float iter_angle = min_angle; //math_util::AngleMod(min_angle + max_p.angle);
+
+    Rotation2Df lidar_rot(max_p.angle);
+    // cout << "maxp_angle: " << max_p.angle << endl;
+    // Vector2f lidar_base(0.20, 0);
+    // Vector2f lidar_offset = lidar_rot * lidar_base;
+    float lidar_offset = 0.2;
     //change this loop
     for (unsigned int i = 0; i < ranges.size(); i += 1) {
-      iter_angle = math_util::AngleMod(iter_angle + increment);
       if (ranges[i] < range_max) {
         //cout << "iter_angle: " << iter_angle << endl;
-        float x_inc = ranges[i] * cos(iter_angle);
+        Rotation2Df rotato(iter_angle);
+        float x_inc = (ranges[i] + lidar_offset) * cos(iter_angle);
+        cout << "x_inc: " << x_inc << endl;
         float y_inc = ranges[i] * sin(iter_angle);
-        Vector2f point(max_p.loc.x() + lidar_offset + x_inc, max_p.loc.y() + y_inc);
+        Vector2f point(max_p.loc.x() + x_inc, max_p.loc.y() + y_inc);
+        // Vector2f real_point = point + lidar_offset;
+        // Vector2f real_real_point = rotato * real_point;
         best_pred.push_back(point);
       } 
+      iter_angle = math_util::AngleMod(iter_angle + increment);
+    }
+    // cout << "calling resample" << endl;
+    if (distance_traveled >= 0.5) {
+      cout << "resample" << endl;
+      // Resample();
+      distance_traveled = 0.0;
     }
   }
 
@@ -284,9 +336,11 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     Rotation2Df rotation(-prev_odom_angle_);
     Vector2f delta_x = rotation * (odom_loc - prev_odom_loc_);
     float delta_x_magnitude = delta_x.norm();
+    distance_traveled += delta_x_magnitude;
 
     float std_dev = k * delta_x_magnitude;
-
+    // cout << "odom_angle: " << odom_angle << endl;
+    // cout << "prev_odom_angle: " << prev_odom_angle_ << endl;
     float delta_theta = math_util::AngleMod(odom_angle - prev_odom_angle_);
     // cout << "delta theta: " << delta_theta << endl;
    
@@ -301,11 +355,13 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       Vector2f error(rng_.Gaussian(0, std_dev / 2 ), rng_.Gaussian(0, std_dev));
       Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error);
-      p.angle = math_util::AngleMod(p.angle + delta_theta + rng_.Gaussian(0, k * delta_theta)); //add noise here
+      float test_error = 0; //(0.1 * k * delta_x_magnitude);
+      p.angle = math_util::AngleMod(p.angle + delta_theta + rng_.Gaussian(0, test_error + (k * delta_theta))); //add noise here
       // if the particle intersects with the map set it to the average of the points that dont intersect
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         p.loc = avg_loc / count;
         p.angle = avg_theta / count;
+        // p.weight = INT_MIN;
       }
 
       avg_loc += p.loc;
@@ -315,7 +371,7 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     if (particles_.size() > 0) {
       //cout << "Sample Particle: " << particles_[0].loc << particles_[0].angle << endl
     	prev_odom_loc_ = odom_loc;
-   	prev_odom_angle_ = odom_angle;
+   	  prev_odom_angle_ = odom_angle;
     }
   }
 
@@ -334,8 +390,9 @@ void ParticleFilter::Initialize(const string& map_file,
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
-    p.loc = loc;// + error; //add noise here
-    p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
+    // Vector2f error(rng_.Gaussian(0, 0.03), rng_.Gaussian(0, 0.03));
+    p.loc = loc; // + error; //add noise here
+    p.angle = angle; // + rng_.Gaussian(0, 0.03); //add noise here
     particles_.push_back(p);
   }
   odom_initialized_ = false;
@@ -343,37 +400,39 @@ void ParticleFilter::Initialize(const string& map_file,
 
 void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
 	//TODO here we just need to compute the mean location, angle and then set
-	// float x = 0.0;
-	// float y = 0.0;
-	// float ang = 0.0;
-	// int count = 0;
+	float x = 0.0;
+	float y = 0.0;
+	float ang = 0.0;
+	int count = 0;
 
 
-	// for (Particle p : particles_) {
-  //   // cout << "curious???????? " << p.weight << endl;
-	// 	x += p.loc.x();
-	// 	y += p.loc.y();
-	// 	ang += p.angle;
-	// 	count += 1;
-	// }
-	// x /= count;
-	// y /= count;
-	// Vector2f avg(x, y);
-	// *loc = avg;
-	// *angle = ang / count;
+	for (Particle p : particles_) {
+    // cout << "curious???????? " << p.weight << endl;
+		x += p.loc.x();
+		y += p.loc.y();
+		ang += p.angle;
+		count += 1;
+	}
+	x /= count;
+	y /= count;
+	Vector2f avg(x, y);
+	*loc = avg;
+	*angle = ang / count;
 
-  if (particles_.size() > 0) {
-    Particle max_p = particles_[0];
+  // if (particles_.size() > 0) {
+  //   Particle max_p = particles_[0];
+  //   // cout << "beginning" << endl;
+  //   for (Particle p : particles_) {
+  //     // cout << p.weight << endl;
+  //     if (p.weight > max_p.weight) {
+  //       max_p = p;
+  //     }
+  //   }
+  //   // cout << "end" << endl;
+  //   *loc = max_p.loc;
+  //   *angle = max_p.angle;
 
-    for (Particle p : particles_) {
-      if (p.weight > max_p.weight) {
-        max_p = p;
-      }
-    }
-    *loc = max_p.loc;
-    *angle = max_p.angle;
-
-  }
+  // }
 }
 
 }  // namespace particle_filter
