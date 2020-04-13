@@ -375,10 +375,10 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
       Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
       Vector2f pcopy(p.loc.x(), p.loc.y());
       p.loc += rotation2 * (delta_x + error); //I CHANGED
-      float test_error = (0.1* delta_x_magnitude);
+      float test_error = (0.2* delta_x_magnitude);
       // float chand_err = 0.1;
       // double ang_err = (k * delta_theta + test_error);
-      p.angle = math_util::AngleMod(p.angle + 1.5 * delta_theta + rng_.Gaussian(0, test_error + (delta_theta * 1.5))); //add noise here 2.5 // I CHANGED
+      p.angle = math_util::AngleMod(p.angle + 1.5 * delta_theta + rng_.Gaussian(0, test_error + (delta_theta * 1.0))); //add noise here 2.5 // I CHANGED
       // if the particle intersects with the map set it to the average of the points that dont intersect
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         // p.loc = avg_loc / count;
