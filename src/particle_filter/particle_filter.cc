@@ -51,7 +51,7 @@ using vector_map::VectorMap;
 using std::max;
 using std::min;
 
-DEFINE_double(num_particles, 30, "Number of particles");
+DEFINE_double(num_particles, 50, "Number of particles");
 
 // Fill in the body of these functions and create helpers as needed
 // in order to implement localization using a particle filter.
@@ -134,34 +134,38 @@ void ParticleFilter::Update(const vector<float>& ranges,
                             Particle* p_ptr) {
   //ranges holds s values
   //calculate the weight here
-  int num_rays = 1081;
+  int num_rays = ranges.size();
   vector<float> scan_ptr;
   float gamma = -1.0 / (num_rays / 2);
-  float sigma = 0.1;
+  float sigma = 0.15;
   map_.GetPredictedScan(p_ptr->loc, range_min, range_max, angle_min, angle_max, num_rays, &scan_ptr);
   float smin = 0.5;
   float smax = 15;
-  float dshort = 0.075; //was 0.2
-  float dlong = 0.03;
+  float dshort = 0.05; //was 0.2
+  float dlong = 0.15;
 
-  float weight = p_ptr -> weight;
+  float weight = 0;
   if (p_ptr -> weight < -3000) {
-    cout << "baddddddddd" << endl;
+    // cout << FLAGS_num_particles << endl;
+    // cout << "baddddddddd" << endl;
   }
   if (p_ptr -> weight > -3000 || true) {
     for (int i = 0; i < num_rays; i+=10) {
-      // cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
       float s_i = ranges[i];  //true
       float s_hat = scan_ptr[i]; //predicted
       if (ranges[i] >= smin && ranges[i] <= smax) {
         // weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
+        // cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
       //change to robust
         if (s_i < (s_hat - dshort)) {
           weight += (pow(dshort, 2) / pow(sigma, 2));
+          // cout << "yello" << endl;
         } else if (s_i > (s_hat + dlong)) {
           weight += (pow(dlong, 2) / pow(sigma, 2));
+          // cout << "yellshort" << endl;
         } else {
           weight += (pow(s_i - s_hat, 2) / pow(sigma, 2));
+          // cout << "normal" << endl;
         }
       }
     }
@@ -198,7 +202,6 @@ void ParticleFilter::Resample() {
   int sum_W = ConfigWeights(); // Let W = sum of all weights wi << likelihood value
   cout <<"sumW: " << sum_W << endl;
   int count = 0;
-  
   for (int i = 0; i < FLAGS_num_particles; i++) { // Repeat N times
   // while (count < FLAGS_num_particles) {
     // cout << "hi" << endl;
@@ -208,7 +211,8 @@ void ParticleFilter::Resample() {
     float w_prime = 0; // w’ = 0
     for (Particle p: particles_) { // for each particle weight wi
       if (p.weight < -3000) {
-        cout << "baddddddddd" << endl;
+        // cout << FLAGS_num_particles << endl;
+        // cout << "baddddddddd" << endl;
       }
       w_prime += exp(p.weight);
       // cout <<"w_prime: " << w_prime << endl;
@@ -218,7 +222,7 @@ void ParticleFilter::Resample() {
           r.angle = p.angle;//  +rng_.Gaussian(0, 0.07); // add noise here
           // r.weight = p.weight;
           //r weight we need to calculate
-          cout << "added: " << p.weight << "loc: " << p.loc << endl;
+          // cout << "added: " << p.weight << "loc: " << p.loc << endl;
           // possible convert back to regular weight?
           new_particles.push_back(r);
           break;
@@ -323,9 +327,10 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
       } 
       iter_angle = math_util::AngleMod(iter_angle + increment);
     }
-    // cout << "calling resample" << endl;
-    if (distance_traveled >= 0.5) {
-      cout << "resample" << endl;
+    // cout << "calling resample" << distance_traveled << endl;
+
+    if (distance_traveled >= 0.3) {
+      // cout << "resample" << endl;
       Resample();
       distance_traveled = 0.0;
     }
@@ -367,18 +372,18 @@ void ParticleFilter::ObserveOdometry(const Vector2f& odom_loc,
     for (Particle &p : particles_)
     {
       Rotation2Df rotation2(p.angle);
-      Vector2f error(rng_.Gaussian(0, 2 * std_dev), rng_.Gaussian(0, 2 * std_dev));
+      Vector2f error(rng_.Gaussian(0, std_dev), rng_.Gaussian(0, std_dev));
       Vector2f pcopy(p.loc.x(), p.loc.y());
-      p.loc += rotation2 * (delta_x + error);
-      float test_error = (0.5 * delta_x_magnitude);
+      p.loc += rotation2 * (delta_x + error); //I CHANGED
+      float test_error = 0; //(0.5 * delta_x_magnitude);
       // float chand_err = 0.1;
       // double ang_err = (k * delta_theta + test_error);
-      p.angle = math_util::AngleMod(p.angle + delta_theta + rng_.Gaussian(0, test_error + (delta_theta * 2.5))); //add noise here
+      p.angle = math_util::AngleMod(p.angle + 1.5 * delta_theta + rng_.Gaussian(0, test_error + (delta_theta * 1.5))); //add noise here 2.5 // I CHANGED
       // if the particle intersects with the map set it to the average of the points that dont intersect
       if (map_.Intersects(pcopy, p.loc + (rotation2 * car_length)) && count != 0) {
         // p.loc = avg_loc / count;
         // p.angle = avg_theta / count;
-        p.weight = INT_MIN; //work
+        // p.weight = INT_MIN; //work
       }
 
       avg_loc += p.loc;
@@ -407,9 +412,9 @@ void ParticleFilter::Initialize(const string& map_file,
   for (int i = 0; i < FLAGS_num_particles; i++)
   {
     Particle p;
-    Vector2f error(rng_.UniformRandom(-0.2, 0.2), rng_.UniformRandom(-0.2, 0.2)); //might need some negatives
-    p.loc = loc + error; //add noise here
-    p.angle = angle + rng_.UniformRandom(-0.1, 0.1); //add noise here
+    Vector2f error(rng_.Gaussian(0, 0.2), rng_.Gaussian(0, 0.2)); //might need some negatives
+    p.loc = loc + error; //add noise here // I CHANGED
+    p.angle = angle + rng_.Gaussian(0, 0.05); //add noise here I CHANGED
     particles_.push_back(p);
   }
   odom_initialized_ = false;
