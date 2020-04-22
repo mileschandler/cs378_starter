@@ -137,10 +137,7 @@ double Navigation::FindPathWeight(Vector2f& current, Vector2f& next) {
     //if xs are the same or ys are the same
     double weight = 0;
     double epsilon = 0.1;
-    cout << "current: " << current << endl;
-    cout << "next: " << next << endl;
     if (abs(current.x() - next.x()) < epsilon || abs(current.y() - next.y()) < epsilon ){
-        cout << "hello" << endl;
         weight = 1;
     } else {
         //they are diagonals
@@ -154,7 +151,7 @@ double Navigation::heuristic(Vector2f& loc, Vector2f& goal) {
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
-    cout << "nav_goal: " << loc << endl;
+    // cout << "nav_goal: " << loc << endl;
     nav_goal_loc_ = loc;
     path_set = false;
 
