@@ -22,6 +22,8 @@
 #include <vector>
 
 #include "eigen3/Eigen/Dense"
+#include "vector_map/vector_map.h"
+#include <unordered_map>
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
@@ -43,6 +45,21 @@ struct PathOption {
 
 class Navigation {
  public:
+
+ template<typename T>
+  struct matrix_hash : std::unary_function<T, size_t> {
+    std::size_t operator()(T const& matrix) const {
+      // Note that it is oblivious to the storage order of Eigen matrix (column- or
+      // row-major). It will give you the same hash value for two different matrices if they
+      // are the transpose of each other in different storage order.
+      int seed = 0;
+      for (int i = 0; i < (int) matrix.size(); ++i) {
+        auto elem = *(matrix.data() + i);
+        seed ^= std::hash<typename T::Scalar>()(elem) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      return seed;
+    }
+  };
 
    // Constructor
   explicit Navigation(const std::string& map_file, ros::NodeHandle* n);
@@ -79,6 +96,14 @@ class Navigation {
   // Used to set the next target pose.
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
+  void PlanPath(std::unordered_map<Eigen::Vector2f, Eigen::Vector2f, matrix_hash<Eigen::Vector2f>>& came_from);
+
+  std::vector<Eigen::Vector2f> FindNeighbors (Eigen::Vector2f& loc);
+
+  double FindPathWeight(Eigen::Vector2f& current, Eigen::Vector2f& next);
+
+  double heuristic (Eigen::Vector2f& loc, Eigen::Vector2f& goal);
+
  private:
 
   // Current robot location.
@@ -112,6 +137,12 @@ class Navigation {
   Eigen::Vector2f nav_goal_loc_;
   // Navigation goal angle.
   float nav_goal_angle_;
+
+  vector_map::VectorMap map_;
+
+  bool path_set;
+
+  Eigen::Vector2f nav_goal_loc_print_;
 };
 
 }  // namespace navigation

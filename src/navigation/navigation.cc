@@ -33,6 +33,9 @@
 #include "shared/ros/ros_helpers.h"
 #include "navigation.h"
 #include "visualization/visualization.h"
+#include "vector_map/vector_map.h"
+#include "simple_queue.h"
+#include <unordered_map>
 
 using Eigen::Rotation2Df;
 using Eigen::Vector2f;
@@ -51,6 +54,7 @@ using std::vector;
 using namespace math_util;
 using namespace ros_helpers;
 using namespace visualization;
+
 
 namespace {
 ros::Publisher drive_pub_;
@@ -76,6 +80,7 @@ const float curve_delta = 0.1;
 const float c_max = 0.05;
 const float w1 = 0.4;
 const float w2 = -0.1;
+
 
 std::vector<Eigen::Vector2f> point_cloud;
 
@@ -105,14 +110,59 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
   global_viz_msg_ = visualization::NewVisualizationMessage(
       "map", "navigation_global");
   InitRosHeader("base_link", &drive_msg_.header);
+  //load map object here somewhere
+  map_.Load("maps/GDC1.txt"); //eventually can change to map_file
+  path_set = true;
+}
+
+vector<Vector2f> Navigation::FindNeighbors(Vector2f& loc) {
+    const float grid_dist = 0.25;
+    vector<Vector2f> neighbors;
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            if (!(i == 0 && j == 0)) {
+                Vector2f n(loc.x() + (i * grid_dist), loc.y() + (j * grid_dist));
+                //check if this neighbor n intercects with a map line
+                if (!map_.Intersects(loc, n)) {
+                    neighbors.push_back(n);
+                }
+            }
+        }
+    }
+    return neighbors;
+
+}
+
+double Navigation::FindPathWeight(Vector2f& current, Vector2f& next) {
+    //if xs are the same or ys are the same
+    double weight = 0;
+    double epsilon = 0.1;
+    cout << "current: " << current << endl;
+    cout << "next: " << next << endl;
+    if (abs(current.x() - next.x()) < epsilon || abs(current.y() - next.y()) < epsilon ){
+        cout << "hello" << endl;
+        weight = 1;
+    } else {
+        //they are diagonals
+        weight = sqrt(2);
+    }
+    return weight;
+}
+
+double Navigation::heuristic(Vector2f& loc, Vector2f& goal) {
+    return (goal - loc).norm();
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
+    cout << "nav_goal: " << loc << endl;
+    nav_goal_loc_ = loc;
+    path_set = false;
 
 }
 
 void Navigation::UpdateLocation(const Eigen::Vector2f& loc, float angle) {
-   
+    // cout << "loc: " << loc << endl;
+    robot_loc_ = loc;
 }
 
 void Navigation::UpdateOdometry(const Vector2f& loc,
@@ -352,24 +402,87 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta) {
     return best_path;
 }
 
+// this is a hash function for the Vector2f. Here is the source we found this from.
+//https://wjngkoh.wordpress.com/2015/03/04/c-hash-function-for-eigen-matrix-and-vector/
+
+
+void Navigation::PlanPath(std::unordered_map<Vector2f, Vector2f, matrix_hash<Vector2f>>& came_from) {
+    // A* from https://www.redblobgames.com/pathfinding/a-star/implementation.html
+    //https://www.geeksforgeeks.org/unordered_map-in-cpp-stl/
+    //idk what we are doing wrong its exactly like this...
+    came_from.clear();
+    std::unordered_map<Vector2f, double, matrix_hash<Vector2f>> cost_so_far;
+    SimpleQueue<Vector2f, double> frontier; //probably have to change this
+    Vector2f start = robot_loc_; 
+
+    frontier.Push(start, 0);
+    came_from[start] = start;
+    cost_so_far[start] = 0;
+
+    while (!frontier.Empty()) {
+        // cout << "top of loop" << endl;
+        Vector2f current = frontier.Pop();
+
+        // cout << "curr - nav: " << (current - nav_goal_loc_).norm() << endl;
+        if ((current - nav_goal_loc_).norm() < 0.25) {
+            nav_goal_loc_print_ = current;
+            break;
+        }
+
+        for (Vector2f next : FindNeighbors(current)) {//change to FindNeighbors
+            double new_cost = cost_so_far[current] + FindPathWeight(current, next); //find way to get cost
+            if (cost_so_far.find(next) == cost_so_far.end()
+                || new_cost < cost_so_far[next]) {
+                cost_so_far[next] = new_cost;
+                double priority = new_cost + heuristic(next, nav_goal_loc_);
+                frontier.Push(next, priority);
+                came_from[next] = current;
+            }
+        }
+    }   
+}
+
 void Navigation::Run(float delta_x, float theta) {
 
    // Vector2f p(5,0);
     ClearVisualizationMsg(local_viz_msg_);
     ClearVisualizationMsg(global_viz_msg_);
     
+    //******CP7*******
+    if (!path_set) {
+        cout << "PLANNING: " << endl;
+        std::unordered_map<Vector2f, Vector2f, matrix_hash<Vector2f>> came_from;
+        PlanPath(came_from);
+        cout << "Path set" << endl;
+        // path_set = true;
+        /*
+        void DrawLine(const Eigen::Vector2f& p0,
+              const Eigen::Vector2f& p1,
+              uint32_t color,
+              f1tenth_course::VisualizationMsg& msg);
+        */
+        cout <<"plan_path nav_goal: " << nav_goal_loc_print_ << endl;
+        Vector2f end = nav_goal_loc_print_;
+        Vector2f start = came_from[nav_goal_loc_print_];
+        while (start != end) {
+            DrawLine(end, start, 0xFF0000, local_viz_msg_);
+            end = start;
+            start = came_from[start];
+        }
+        
+    }
 
     // std::pair<float, float> best_path = GetBestPath(delta_x);
     //  cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
-    const std::pair<float,float> x = UpdateFreeDistance(theta);
+    // const std::pair<float,float> x = UpdateFreeDistance(theta);
     // const float new_vel = GetVelocity(best_path.first);
-    cout << "dist left: " << x.first << endl;
-    const float new_vel = GetVelocity(x.first);
+    // cout << "dist left: " << x.first << endl;
+    // const float new_vel = GetVelocity(x.first);
     AckermannCurvatureDriveMsg msg;
-    msg.velocity = new_vel;
+    // msg.velocity = new_vel;
     // msg.curvature = best_path.second;
-    msg.curvature = theta;
+    // msg.curvature = theta;
     drive_pub_.publish(msg);
     viz_pub_.publish(local_viz_msg_);
 }
