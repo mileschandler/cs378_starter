@@ -24,6 +24,7 @@
 #include "eigen3/Eigen/Dense"
 #include "vector_map/vector_map.h"
 #include <unordered_map>
+#include "shared/math/line2d.h"
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
@@ -46,6 +47,8 @@ struct PathOption {
 class Navigation {
  public:
 
+// this is a hash function for the Vector2f. Here is the source we found this from.
+//https://wjngkoh.wordpress.com/2015/03/04/c-hash-function-for-eigen-matrix-and-vector/
  template<typename T>
   struct matrix_hash : std::unary_function<T, size_t> {
     std::size_t operator()(T const& matrix) const {
@@ -83,7 +86,7 @@ class Navigation {
 
   float GetClearance(float delta_x, float theta);
   
-  std::pair<float, float> GetBestPath(float old_delta);
+  std::pair<float, float> GetBestPath(float old_delta, Eigen::Vector2f& carrot);
 
   // Gets the velocity to publish to the driver for the next time step
   float GetVelocity(float delta_x);
@@ -103,6 +106,8 @@ class Navigation {
   double FindPathWeight(Eigen::Vector2f& current, Eigen::Vector2f& next);
 
   double heuristic (Eigen::Vector2f& loc, Eigen::Vector2f& goal);
+
+  Eigen::Vector2f GetCarrot();
 
  private:
 
@@ -143,6 +148,8 @@ class Navigation {
   bool path_set;
 
   Eigen::Vector2f nav_goal_loc_print_;
+
+  std::vector<geometry::line2f> path_lines;
 };
 
 }  // namespace navigation
