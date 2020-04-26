@@ -260,10 +260,10 @@ float Navigation::GetClearance(float delta_x, float curve) {
 float GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
     
     Vector2f goal = carrot;
-    cout << "goal: " << carrot << endl;
+    //cout << "goal: " << carrot << endl;
    
     if (abs(curvature) <= curve_epsilon) {
-        cout << "distance remaining straight: " << 5 << endl;
+        //cout << "distance remaining straight: " << 5 << endl;
         return 0;
     }
 
@@ -274,7 +274,7 @@ float GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
     assert(x >= 0);
     Vector2f end_pos(x, y);
     Vector2f diff = goal - end_pos;
-    cout << "distance remaining curve: " << diff.norm() << endl;
+    //cout << "distance remaining curve: " << diff.norm() << endl;
     return diff.norm(); //- (delta * curvature);
 }
 
@@ -399,7 +399,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve, carrot);
         float clearance = 0;
         float score = delta_x_phi.first + (w2 * distance_to_goal) + (w1 * clearance); //+ (w2 * distance_to_goal);
-        cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
+        //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
@@ -454,22 +454,30 @@ Vector2f Navigation::GetCarrot() {
     //from the cars location, draw lines around in a circle
     
     //vector<line2d> cars_lines;
-    Vector2f carrot;
+    Vector2f carrot(69, 69);
     const Vector2f point_0 = robot_loc_;
     float delta = 10;
     float radius = 5.0;
     float min_pos = path_lines.size() - 1;
     for (float i = 0; i < 360; i += delta) {
-        const Vector2f point_1((radius * cos(i)), (radius * sin(i)));
+        Vector2f point_1((radius * cos(i)), (radius * sin(i)));
+        // we need to transform this point into the same frame as robot loc
+        point_1 = point_0 - point_1;
         const line2f l(point_0, point_1);
+        DrawLine(point_0, point_1, 0x34ebde, local_viz_msg_);
        for (int j = 0; j < (int)path_lines.size(); j++){
-
+            cout << "in path line" << endl;
+            //assert(false);
             const line2f path_line = path_lines[j];
             Vector2f intersection;
+            //seems like we arent getting an intersection. 
             if (l.Intersection(path_line, &intersection) && j < min_pos){
                 // new max so save it
                 min_pos = j;
                 carrot = intersection;
+                cout << "Intersection!" <<  endl;
+                //assert(false);
+                
             }
         }
     }
@@ -495,27 +503,28 @@ void Navigation::Run(float delta_x, float theta) {
         carrot = GetCarrot();
     } else {
         path_lines.clear();
-        cout << "PLANNING: " << endl;
+        //cout << "PLANNING: " << endl;
         std::unordered_map<Vector2f, Vector2f, matrix_hash<Vector2f>> came_from;
         PlanPath(came_from);
-        cout << "Path set" << endl;
-        // path_set = true;
+        //cout << "Path set" << endl;
+        //path_set = true;
         /*
         void DrawLine(const Eigen::Vector2f& p0,
               const Eigen::Vector2f& p1,
               uint32_t color,
               f1tenth_course::VisualizationMsg& msg);
         */
-        cout <<"plan_path nav_goal: " << nav_goal_loc_print_ << endl;
+        //cout <<"plan_path nav_goal: " << nav_goal_loc_print_ << endl;
         Vector2f end = nav_goal_loc_print_;
         Vector2f start = came_from[nav_goal_loc_print_];
         //path_lines
         while (start != end) {
             //build line list here
-            
+            path_lines.push_back(line2f(end, start));
             DrawLine(end, start, 0xFF0000, local_viz_msg_);
             end = start;
             start = came_from[start];
+            //path_lines.push_back(end);
         }
         carrot = GetCarrot(); //hopefully wont fail
     } 
