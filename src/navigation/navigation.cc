@@ -78,7 +78,7 @@ const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
-const float curve_delta = 1; //0.1;
+const float curve_delta = 0.5; //0.1;
 const float c_max = 5.0;
 
 
@@ -261,17 +261,19 @@ float Navigation::GetClearance(float delta_x, float curve) {
 float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
     
     Vector2f goal = carrot - robot_loc_;
-    cout << "goal: " << carrot << endl;
-    cout << "phi: " << phi << endl;
+    //cout << "goal: " << carrot << endl;
+    //cout << "phi: " << phi << endl;
     Rotation2Df rot(robot_angle_);
    
     if (abs(curvature) <= curve_epsilon) {
-        cout << "distance remaining straight: " << 5 << endl;
+
+        //cout << "distance remaining straight: " << 5 << endl;
         Vector2f straight(robot_loc_.x() + 5.0, robot_loc_.y());
         Vector2f straight_(robot_loc_.x() + (5.0 * cos(robot_angle_)), robot_loc_.y() + (5.0 * sin(robot_angle_))); //need free distance
         // Vector2f straight_ = rot * straight;
         DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
         Vector2f straight_diff = goal - straight;
+        //assert(false);
         return straight_diff.norm();
     }
 
@@ -281,13 +283,14 @@ float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& car
     float x = r * sin(phi);
     assert(x >= 0);
     Vector2f end_pos(x, y);
+    DrawCross(end_pos, 0.5, 0x32a8a8, local_viz_msg_);
     Vector2f vis_point = end_pos + robot_loc_;
     Vector2f vis_point_(vis_point.x() + (5.0 * cos(robot_angle_)), vis_point.y() + (5.0 * sin(robot_angle_)));
 
-    DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
-    cout << "end_pos: " << end_pos << endl;
-    cout << "robot loc: " << robot_loc_ << endl;
-    cout << "Where it thinks it is: " << end_pos + robot_loc_ << endl;
+    //DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
+    //cout << "end_pos: " << end_pos << endl;
+    //cout << "robot loc: " << robot_loc_ << endl;
+    //cout << "Where it thinks it is: " << end_pos + robot_loc_ << endl;
     Vector2f diff = goal - end_pos;
     //cout << "distance remaining curve: " << diff.norm() << endl;
     return diff.norm(); //- (delta * curvature);
@@ -409,14 +412,25 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
     std::pair<float, float> best_path;
 
     //TODO CHANGE BACK TO -1
-    for (float curve = -1; curve <= 1; curve += curve_delta) {
+    float right = 0;
+    float center = 0; 
+    float left = 0;
+    for (float curve = -0.5; curve <= 0.5; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve, carrot);
         float clearance = 0;
-        float score = w2 * distance_to_goal; //delta_x_phi.first + (w2 * distance_to_goal) + (w1 * clearance); //+ (w2 * distance_to_goal);
-        cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
+        if (curve == -0.5)
+            right = distance_to_goal;
+        if (curve == 0)
+            center = distance_to_goal;
+        if (curve == 0.5)
+            left = distance_to_goal;
+
+        float score = w2 * distance_to_goal;
+        //this shows me that left is always getting a lower distance remaining. 
+        //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
@@ -427,6 +441,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         }
     }
     DrawPathOption(best_path.second, best_path.first, 0, local_viz_msg_);
+    cout << "LEFT:  " << left << " Center: " << center << " RIGHT: " << right << endl; 
     return best_path;
 }
 
@@ -468,37 +483,21 @@ void Navigation::PlanPath(std::unordered_map<Vector2f, Vector2f, matrix_hash<Vec
 }
 
 Vector2f Navigation::GetCarrot() {
-    //from the cars location, draw lines around in a circle
-    
-    //vector<line2d> cars_lines;
     Vector2f carrot(69, 69);
-    const Vector2f point_0 = robot_loc_;
-    float delta = 10;
-    float radius = 5.0;
-    float min_pos = path_lines.size() - 1;
-    for (float i = 0; i < 360; i += delta) {
-        Vector2f point_1((radius * cos(i)), (radius * sin(i)));
-        // we need to transform this point into the same frame as robot loc
-        point_1 = point_0 - point_1;
-        const line2f l(point_0, point_1);
-        DrawLine(point_0, point_1, 0x34ebde, local_viz_msg_);
-       for (int j = 0; j < (int)path_lines.size(); j++){
-            // cout << "in path line" << endl;
-            //assert(false);
-            const line2f path_line = path_lines[j];
-            Vector2f intersection;
-            //seems like we arent getting an intersection. 
-            if (l.Intersection(path_line, &intersection) && j < min_pos){
-                // new max so save it
+    float radius = 4.0;
+    float epsilon = 0.2;
+    float min_pos = path_points.size() - 1;
+    for (int j = 0; j < (int) path_points.size(); j++) {
+        Vector2f point = path_points[j];
+        if ((robot_loc_ - point).norm() - radius <= epsilon && j < min_pos){
+            //double check that this carrot isnt gonna run you through a wall...
+            if (!map_.Intersects(robot_loc_, point)){
                 min_pos = j;
-                carrot = intersection;
-                cout << "Intersection!" <<  endl;
-                //assert(false);
-                
+                carrot = path_points[j];
             }
         }
     }
-    cout << "CARROT: " << carrot.x() << " " << carrot.y() << endl;
+    //cout << "CARROT: " << carrot.x() << " " << carrot.y() << endl;
     return carrot;
 }
 
@@ -519,7 +518,8 @@ void Navigation::Run(float delta_x, float theta) {
     if (path_set) {
         carrot = GetCarrot();
     } else {
-        path_lines.clear();
+        
+        path_points.clear();
         //cout << "PLANNING: " << endl;
         std::unordered_map<Vector2f, Vector2f, matrix_hash<Vector2f>> came_from;
         PlanPath(came_from);
@@ -534,14 +534,16 @@ void Navigation::Run(float delta_x, float theta) {
         //cout <<"plan_path nav_goal: " << nav_goal_loc_print_ << endl;
         Vector2f end = nav_goal_loc_print_;
         Vector2f start = came_from[nav_goal_loc_print_];
-        //path_lines
+        path_points.push_back(end);
+       
         while (start != end) {
             //build line list here
-            path_lines.push_back(line2f(end, start));
+          
             DrawLine(end, start, 0xFF0000, local_viz_msg_);
             end = start;
             start = came_from[start];
-            //path_lines.push_back(end);
+            path_points.push_back(end);
+          
         }
         carrot = GetCarrot(); //hopefully wont fail
     } 

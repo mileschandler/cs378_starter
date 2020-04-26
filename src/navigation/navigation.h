@@ -149,6 +149,7 @@ class Navigation {
   bool path_set;
 
   Eigen::Vector2f nav_goal_loc_print_;
+  std::vector<Eigen::Vector2f> path_points;
 
   std::vector<geometry::line2f> path_lines;
 };
