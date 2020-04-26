@@ -108,6 +108,7 @@ class Navigation {
   double heuristic (Eigen::Vector2f& loc, Eigen::Vector2f& goal);
 
   Eigen::Vector2f GetCarrot();
+  float GetDistanceRemaining(float phi, float curvature, Eigen::Vector2f& carrot);
 
  private:
 

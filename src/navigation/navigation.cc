@@ -78,7 +78,7 @@ const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
-const float curve_delta = 0.1;
+const float curve_delta = 1; //0.1;
 const float c_max = 5.0;
 
 
@@ -174,6 +174,7 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
         robot_loc_ = loc;
         robot_angle_ = angle;
         first_odom = false;
+        //hi
     }
     //cout << "angle " << (angle - robot_angle_) << endl;
     //checking
@@ -257,22 +258,36 @@ float Navigation::GetClearance(float delta_x, float curve) {
     return min_clearance;
 }
 
-float GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
+float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
     
-    Vector2f goal = carrot;
-    //cout << "goal: " << carrot << endl;
+    Vector2f goal = carrot - robot_loc_;
+    cout << "goal: " << carrot << endl;
+    cout << "phi: " << phi << endl;
+    Rotation2Df rot(robot_angle_);
    
     if (abs(curvature) <= curve_epsilon) {
-        //cout << "distance remaining straight: " << 5 << endl;
-        return 0;
+        cout << "distance remaining straight: " << 5 << endl;
+        Vector2f straight(robot_loc_.x() + 5.0, robot_loc_.y());
+        Vector2f straight_(robot_loc_.x() + (5.0 * cos(robot_angle_)), robot_loc_.y() + (5.0 * sin(robot_angle_))); //need free distance
+        // Vector2f straight_ = rot * straight;
+        DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
+        Vector2f straight_diff = goal - straight;
+        return straight_diff.norm();
     }
 
-    float r = 1.0 / abs(curvature);
+    float r = 1.0 / curvature; //was abs(curvature)
     float y = r - (cos(phi) * r);
     assert(y >= 0);
     float x = r * sin(phi);
     assert(x >= 0);
     Vector2f end_pos(x, y);
+    Vector2f vis_point = end_pos + robot_loc_;
+    Vector2f vis_point_(vis_point.x() + (5.0 * cos(robot_angle_)), vis_point.y() + (5.0 * sin(robot_angle_)));
+
+    DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
+    cout << "end_pos: " << end_pos << endl;
+    cout << "robot loc: " << robot_loc_ << endl;
+    cout << "Where it thinks it is: " << end_pos + robot_loc_ << endl;
     Vector2f diff = goal - end_pos;
     //cout << "distance remaining curve: " << diff.norm() << endl;
     return diff.norm(); //- (delta * curvature);
@@ -291,7 +306,7 @@ std::pair<float, float> GetFreeDistance(Vector2f& point, float curvature) {
             //slideset 6 slide 20
             free_distance = point.x() - h;
             delta_x_phi.first = free_distance;
-            delta_x_phi.second = -1;
+            delta_x_phi.second = 100;
     }
     else
     {
@@ -355,6 +370,7 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
     // float min_free_dist = 3;
     std::pair<float, float> delta_x_phi;
     delta_x_phi.first = 5.0;
+    delta_x_phi.second = 5.0 / (1 / abs(curvature));
     for (Vector2f point : point_cloud)
     {
         //determine if point is obstacle
@@ -387,19 +403,20 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
 
 std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carrot) {
     // for each possible path
-    const float w1 = 0.4;
-    const float w2 = -0.4;
+    // const float w1 = 0.4;
+    const float w2 = -1; //-0.4;
     float max_score = -MAXFLOAT;
     std::pair<float, float> best_path;
 
+    //TODO CHANGE BACK TO -1
     for (float curve = -1; curve <= 1; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve, carrot);
         float clearance = 0;
-        float score = delta_x_phi.first + (w2 * distance_to_goal) + (w1 * clearance); //+ (w2 * distance_to_goal);
-        //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
+        float score = w2 * distance_to_goal; //delta_x_phi.first + (w2 * distance_to_goal) + (w1 * clearance); //+ (w2 * distance_to_goal);
+        cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
@@ -466,7 +483,7 @@ Vector2f Navigation::GetCarrot() {
         const line2f l(point_0, point_1);
         DrawLine(point_0, point_1, 0x34ebde, local_viz_msg_);
        for (int j = 0; j < (int)path_lines.size(); j++){
-            cout << "in path line" << endl;
+            // cout << "in path line" << endl;
             //assert(false);
             const line2f path_line = path_lines[j];
             Vector2f intersection;
