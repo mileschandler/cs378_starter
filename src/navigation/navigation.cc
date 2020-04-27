@@ -78,7 +78,7 @@ const float base_to_tip = .42;
 const float h = base_to_tip + margin;
 const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
-const float curve_delta = 0.5; //0.1;
+const float curve_delta = 0.1;
 const float c_max = 5.0;
 
 
@@ -260,7 +260,7 @@ float Navigation::GetClearance(float delta_x, float curve) {
 
 float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
     
-    Vector2f goal = carrot - robot_loc_;
+    Vector2f goal = carrot;
     //cout << "goal: " << carrot << endl;
     //cout << "phi: " << phi << endl;
     Rotation2Df rot(robot_angle_);
@@ -272,26 +272,32 @@ float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& car
         Vector2f straight_(robot_loc_.x() + (5.0 * cos(robot_angle_)), robot_loc_.y() + (5.0 * sin(robot_angle_))); //need free distance
         // Vector2f straight_ = rot * straight;
         DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
-        Vector2f straight_diff = goal - straight;
+        Vector2f straight_diff = goal - straight_;
         //assert(false);
         return straight_diff.norm();
     }
-
+    
     float r = 1.0 / curvature; //was abs(curvature)
-    float y = r - (cos(phi) * r);
+    float theta = 5.0 / r;
+   
+    //cout << "THETA: " << theta << "ROBOT_ANGLE: " << robot_angle_<< endl;
+    float y = r - (cos(theta) * r);
     assert(y >= 0);
-    float x = r * sin(phi);
+    // float x = r * cos(phi);
+    float x = r * sin(theta);
     assert(x >= 0);
     Vector2f end_pos(x, y);
-    DrawCross(end_pos, 0.5, 0x32a8a8, local_viz_msg_);
+    end_pos = rot * end_pos;
     Vector2f vis_point = end_pos + robot_loc_;
-    Vector2f vis_point_(vis_point.x() + (5.0 * cos(robot_angle_)), vis_point.y() + (5.0 * sin(robot_angle_)));
+    //vis_point = rot * vis_point;
+    // Vector2f vis_point_(vis_point.x() + (5.0 * cos(robot_angle_)), vis_point.y() + (5.0 * sin(robot_angle_)));
+    DrawCross(vis_point, 0.5, 0x32a8a8, local_viz_msg_);
 
-    //DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
+    // DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
     //cout << "end_pos: " << end_pos << endl;
     //cout << "robot loc: " << robot_loc_ << endl;
     //cout << "Where it thinks it is: " << end_pos + robot_loc_ << endl;
-    Vector2f diff = goal - end_pos;
+    Vector2f diff = goal - vis_point;
     //cout << "distance remaining curve: " << diff.norm() << endl;
     return diff.norm(); //- (delta * curvature);
 }
@@ -415,7 +421,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
     float right = 0;
     float center = 0; 
     float left = 0;
-    for (float curve = -0.5; curve <= 0.5; curve += curve_delta) {
+    for (float curve = -1; curve <= 1; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
@@ -548,7 +554,7 @@ void Navigation::Run(float delta_x, float theta) {
         carrot = GetCarrot(); //hopefully wont fail
     } 
     
-    DrawCross(carrot, 5, 0xFF0000, local_viz_msg_);
+    DrawCross(carrot, 0.5, 0x050505, local_viz_msg_);
 
     std::pair<float, float> best_path = GetBestPath(delta_x, carrot);
     //  cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
