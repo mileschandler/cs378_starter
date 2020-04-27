@@ -80,6 +80,7 @@ const float curve_epsilon = 1e-3;
 const float free_dist_cutoff = 0.01;
 const float curve_delta = 0.1;
 const float c_max = 5.0;
+const float done_dist = 1.0;
 
 
 std::vector<Eigen::Vector2f> point_cloud;
@@ -173,12 +174,10 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
     if (first_odom) {
         robot_loc_ = loc;
         robot_angle_ = angle;
+        nav_goal_loc_ = robot_loc_;
         first_odom = false;
         //hi
     }
-    //cout << "angle " << (angle - robot_angle_) << endl;
-    //checking
-    // Rotation2Df delta_theta(angle - robot_angle_);
     Rotation2Df delta_theta(-robot_angle_);
     // Vector2f delta_loc = (delta_theta * loc) - robot_loc_;
     Vector2f delta_loc = delta_theta * (loc - robot_loc_);
@@ -258,7 +257,7 @@ float Navigation::GetClearance(float delta_x, float curve) {
     return min_clearance;
 }
 
-float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& carrot) {
+float Navigation::GetDistanceRemaining(float free_distance, float curvature, Vector2f& carrot) {
     
     Vector2f goal = carrot;
     //cout << "goal: " << carrot << endl;
@@ -268,8 +267,8 @@ float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& car
     if (abs(curvature) <= curve_epsilon) {
 
         //cout << "distance remaining straight: " << 5 << endl;
-        Vector2f straight(robot_loc_.x() + 5.0, robot_loc_.y());
-        Vector2f straight_(robot_loc_.x() + (5.0 * cos(robot_angle_)), robot_loc_.y() + (5.0 * sin(robot_angle_))); //need free distance
+        Vector2f straight(robot_loc_.x() + free_distance, robot_loc_.y());
+        Vector2f straight_(robot_loc_.x() + (free_distance * cos(robot_angle_)), robot_loc_.y() + (free_distance * sin(robot_angle_))); //need free distance
         // Vector2f straight_ = rot * straight;
         DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
         Vector2f straight_diff = goal - straight_;
@@ -278,7 +277,7 @@ float Navigation::GetDistanceRemaining(float phi, float curvature, Vector2f& car
     }
     
     float r = 1.0 / curvature; //was abs(curvature)
-    float theta = 5.0 / r;
+    float theta = free_distance / r;
    
     //cout << "THETA: " << theta << "ROBOT_ANGLE: " << robot_angle_<< endl;
     float y = r - (cos(theta) * r);
@@ -425,7 +424,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
         // float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
-        float distance_to_goal = GetDistanceRemaining(delta_x_phi.second, curve, carrot);
+        float distance_to_goal = GetDistanceRemaining(delta_x_phi.first, curve, carrot);
         float clearance = 0;
         if (curve == -0.5)
             right = distance_to_goal;
@@ -434,7 +433,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         if (curve == 0.5)
             left = distance_to_goal;
 
-        float score = w2 * distance_to_goal;
+        float score = delta_x_phi.first + w2 * distance_to_goal;
         //this shows me that left is always getting a lower distance remaining. 
         //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
         DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
@@ -513,13 +512,21 @@ void Navigation::Run(float delta_x, float theta) {
    // Vector2f p(5,0);
     ClearVisualizationMsg(local_viz_msg_);
     ClearVisualizationMsg(global_viz_msg_);
-
+    AckermannCurvatureDriveMsg msg;
 
     //check if we are at the goal location
     
     
     //******CP7*******
     //getCarrot()
+    if ((nav_goal_loc_ - robot_loc_).norm() <= done_dist || nav_goal_loc_ == Vector2f(0,0) ){
+        msg.velocity = 0;
+        msg.curvature = 0;
+        // msg.curvature = theta;
+        drive_pub_.publish(msg);
+        viz_pub_.publish(local_viz_msg_);
+        return;
+    } 
     Vector2f carrot;
     if (path_set) {
         carrot = GetCarrot();
@@ -556,6 +563,7 @@ void Navigation::Run(float delta_x, float theta) {
     
     DrawCross(carrot, 0.5, 0x050505, local_viz_msg_);
 
+    
     std::pair<float, float> best_path = GetBestPath(delta_x, carrot);
     //  cout << ">>>>>> PATH : " << best_path.first << " " << best_path.second << endl; 
     
@@ -563,7 +571,7 @@ void Navigation::Run(float delta_x, float theta) {
     const float new_vel = GetVelocity(best_path.first);
     // cout << "dist left: " << x.first << endl;
     // const float new_vel = GetVelocity(x.first);
-    AckermannCurvatureDriveMsg msg;
+    
     msg.velocity = new_vel;
     msg.curvature = best_path.second;
     // msg.curvature = theta;
