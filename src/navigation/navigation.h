@@ -110,6 +110,8 @@ class Navigation {
   Eigen::Vector2f GetCarrot();
   float GetDistanceRemaining(float phi, float curvature, Eigen::Vector2f& carrot);
 
+  bool CheckNode(Eigen::Vector2f& node);
+
  private:
 
   // Current robot location.
@@ -150,6 +152,8 @@ class Navigation {
 
   Eigen::Vector2f nav_goal_loc_print_;
   std::vector<Eigen::Vector2f> path_points;
+
+  std::unordered_map<Eigen::Vector2f, Eigen::Vector2f, matrix_hash<Eigen::Vector2f>> came_from;
 
   std::vector<geometry::line2f> path_lines;
 };

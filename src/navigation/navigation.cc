@@ -116,15 +116,33 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
   path_set = true;
 }
 
+
+bool Navigation::CheckNode(Vector2f& node) {
+    const float grid_dist = 0.35;
+    vector<Vector2f> neighbors;
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            if (!(i == 0 && j == 0)) {
+                Vector2f n(node.x() + (i * grid_dist), node.y() + (j * grid_dist));
+                //check if this neighbor n intercects with a map line and check that its not too close to wall
+                if (map_.Intersects(node, n) ) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 vector<Vector2f> Navigation::FindNeighbors(Vector2f& loc) {
-    const float grid_dist = 0.25;
+    const float grid_dist = 0.125;
     vector<Vector2f> neighbors;
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++) {
             if (!(i == 0 && j == 0)) {
                 Vector2f n(loc.x() + (i * grid_dist), loc.y() + (j * grid_dist));
-                //check if this neighbor n intercects with a map line
-                if (!map_.Intersects(loc, n)) {
+                //check if this neighbor n intercects with a map line and check that its not too close to wall
+                if (!map_.Intersects(loc, n) && CheckNode(n)) {
                     neighbors.push_back(n);
                 }
             }
@@ -412,7 +430,7 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
 std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carrot) {
     // for each possible path
     // const float w1 = 0.4;
-    const float w2 = -1; //-0.4;
+    const float w2 = -2; //-0.4;
     float max_score = -MAXFLOAT;
     std::pair<float, float> best_path;
 
@@ -496,10 +514,10 @@ Vector2f Navigation::GetCarrot() {
         Vector2f point = path_points[j];
         if ((robot_loc_ - point).norm() - radius <= epsilon && j < min_pos){
             //double check that this carrot isnt gonna run you through a wall...
-            if (!map_.Intersects(robot_loc_, point)){
+            //if (!map_.Intersects(robot_loc_, point)){
                 min_pos = j;
                 carrot = path_points[j];
-            }
+            //}
         }
     }
     //cout << "CARROT: " << carrot.x() << " " << carrot.y() << endl;
@@ -531,13 +549,13 @@ void Navigation::Run(float delta_x, float theta) {
     if (path_set) {
         carrot = GetCarrot();
     } else {
-        
+        came_from.clear();
         path_points.clear();
         //cout << "PLANNING: " << endl;
-        std::unordered_map<Vector2f, Vector2f, matrix_hash<Vector2f>> came_from;
+        
         PlanPath(came_from);
         //cout << "Path set" << endl;
-        //path_set = true;
+        path_set = true;
         /*
         void DrawLine(const Eigen::Vector2f& p0,
               const Eigen::Vector2f& p1,
@@ -560,6 +578,18 @@ void Navigation::Run(float delta_x, float theta) {
         }
         carrot = GetCarrot(); //hopefully wont fail
     } 
+
+    Vector2f end = nav_goal_loc_print_;
+    Vector2f start = came_from[nav_goal_loc_print_];
+    while (start != end) {
+            //build line list here
+          
+            DrawLine(end, start, 0xFF0000, local_viz_msg_);
+            end = start;
+            start = came_from[start];
+    
+          
+        }
     
     DrawCross(carrot, 0.5, 0x050505, local_viz_msg_);
 
