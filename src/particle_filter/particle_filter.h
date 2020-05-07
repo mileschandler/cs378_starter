@@ -79,6 +79,9 @@ class ParticleFilter {
   // Resample particles.
   void Resample();
 
+  void MilesResample();
+  Particle GetParticleFromCurrentSum(float current_sum);
+
   // For debugging: get predicted point cloud from current location.
   void GetPredictedPointCloud(const Eigen::Vector2f& loc,
                               const float angle,

@@ -270,7 +270,7 @@ float Navigation::GetDistanceRemaining(float free_distance, float curvature, Vec
         Vector2f straight(robot_loc_.x() + free_distance, robot_loc_.y());
         Vector2f straight_(robot_loc_.x() + (free_distance * cos(robot_angle_)), robot_loc_.y() + (free_distance * sin(robot_angle_))); //need free distance
         // Vector2f straight_ = rot * straight;
-        DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
+        //DrawCross(straight_, 0.5, 0x00ff00, local_viz_msg_);
         Vector2f straight_diff = goal - straight_;
         //assert(false);
         return straight_diff.norm();
@@ -290,7 +290,7 @@ float Navigation::GetDistanceRemaining(float free_distance, float curvature, Vec
     Vector2f vis_point = end_pos + robot_loc_;
     //vis_point = rot * vis_point;
     // Vector2f vis_point_(vis_point.x() + (5.0 * cos(robot_angle_)), vis_point.y() + (5.0 * sin(robot_angle_)));
-    DrawCross(vis_point, 0.5, 0x32a8a8, local_viz_msg_);
+    //DrawCross(vis_point, 0.5, 0x32a8a8, local_viz_msg_);
 
     // DrawCross(vis_point, 0.5, 0x00ff00, local_viz_msg_);
     //cout << "end_pos: " << end_pos << endl;
@@ -425,7 +425,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         // float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.first, curve, carrot);
-        float clearance = 0;
+        //float clearance = 0;
         if (curve == -0.5)
             right = distance_to_goal;
         if (curve == 0)
@@ -436,7 +436,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         float score = delta_x_phi.first + w2 * distance_to_goal;
         //this shows me that left is always getting a lower distance remaining. 
         //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
-        DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
+        //DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
             max_score = score;
@@ -445,7 +445,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
             
         }
     }
-    DrawPathOption(best_path.second, best_path.first, 0, local_viz_msg_);
+    //DrawPathOption(best_path.second, best_path.first, 0, local_viz_msg_);
     cout << "LEFT:  " << left << " Center: " << center << " RIGHT: " << right << endl; 
     return best_path;
 }
