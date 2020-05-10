@@ -74,7 +74,7 @@ DEFINE_string(odom_topic, "/odom", "Name of ROS topic for odometry data");
 DEFINE_string(init_topic,
               "/initialpose",
               "Name of ROS topic for initialization");
-DEFINE_string(map, "", "Map file to use");
+DEFINE_string(map, "maps/GDC1.txt", "Map file to use");
 
 DECLARE_int32(v);
 

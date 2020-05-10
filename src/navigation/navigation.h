@@ -150,6 +150,8 @@ class Navigation {
 
   bool path_set;
 
+  bool navigation_complete;
+
   Eigen::Vector2f nav_goal_loc_print_;
   std::vector<Eigen::Vector2f> path_points;
 

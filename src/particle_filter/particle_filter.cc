@@ -139,44 +139,50 @@ void ParticleFilter::Update(const vector<float>& ranges,
   int num_rays = ranges.size();
   vector<float> scan_ptr;
   float gamma = -1.0 / (num_rays / 8); //should be much largger
-  float sigma = 0.3;
+  float sigma = 0.45;
   map_.GetPredictedScan(p_ptr->loc, range_min, range_max, angle_min, angle_max, num_rays, &scan_ptr);
-  float smin = 0.5;
-  float smax = 15;
-  float dshort = 0.2;
-  float dlong = 0.15;
+  // float smin = 0.5;
+  // float smax = 15;
+  // float dshort = 0.2;
+  // float dlong = 0.15;
 
-  float weight = 0;
-  if (p_ptr -> weight < -3000) {
-    // cout << FLAGS_num_particles << endl;
-    // cout << "baddddddddd" << endl;
-  }
+float weight = 0;
+ for (int r = 0; r < (int) ranges.size(); r+=10) {
+   //cout <<"PPTR: " << p_ptr->loc.x() << " "<<  p_ptr->loc.y() << " R: " << ranges[r] << " S: " << scan_ptr[r] <<endl;
+ }
+
+//  for (int s = 0; s < (int) scan_ptr.size(); s +=10) {
+//    cout << "S: " << scan_ptr[s] << endl;
+//  }
+
   if (p_ptr -> weight > -3000) { // was || true
     for (int i = 0; i < num_rays; i+=10) {
       float s_i = ranges[i];  //true
       float s_hat = scan_ptr[i]; //predicted
-      if (ranges[i] >= smin && ranges[i] <= smax) {
-        // weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
-        // cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
-      //change to robust
-      // CHANGE THIS BACK AFTERWARDS
-        if (s_i < (s_hat - dshort)) {
-          weight += (pow(dshort, 2) / pow(sigma, 2));
-          // cout << "yello" << endl;
-        } else if (s_i > (s_hat + dlong)) {
-          weight += (pow(dlong, 2) / pow(sigma, 2));
-          // cout << "yellshort" << endl;
-        } else {
-          weight += (pow(s_i - s_hat, 2) / pow(sigma, 2));
-          // cout << "normal" << endl;
-        }
+      weight += (pow(s_i - s_hat, 2)) / pow(sigma, 2);
+      // if (ranges[i] >= smin && ranges[i] <= smax) {
+      //   // weight += (pow(ranges[i] - scan_ptr[i], 2) / pow(sigma, 2));
+      //   // cout << "diff: " << ranges[i] - scan_ptr[i] << endl;
+      // //change to robust
+      // // CHANGE THIS BACK AFTERWARDS
+      //   if (s_i < (s_hat - dshort)) {
+      //     weight += (pow(dshort, 2) / pow(sigma, 2));
+      //     // cout << "yello" << endl;
+      //   } else if (s_i > (s_hat + dlong)) {
+      //     weight += (pow(dlong, 2) / pow(sigma, 2));
+      //     // cout << "yellshort" << endl;
+      //   } else {
+      //     weight += (pow(s_i - s_hat, 2) / pow(sigma, 2));
+      //     // cout << "normal" << endl;
+      //   }
+      // }
       }
     }
     weight *= gamma;
     // cout << "weight: " << weight << endl;
     p_ptr -> weight = weight; //---> log[(p(st | xt))]
     // p_ptr -> weight = 0;
-  }
+  
 
 }
 
@@ -254,55 +260,56 @@ void ParticleFilter::Resample() {
 
 
 
-  // int count = 0;
-  // for (int i = 0; i < FLAGS_num_particles; i++) { // Repeat N times
-  // // while (count < FLAGS_num_particles) {
-  //   // cout << "hi" << endl;
-  //   // Draw a random number between 0 and W
-  //   int x = rand() % sum_W + 1;
-  //   // cout << "x: " << x << endl;
-  //   float w_prime = 0; // w’ = 0
-  //   for (Particle p: particles_) { // for each particle weight wi
-  //     if (p.weight < -3000) {
-  //       // cout << FLAGS_num_particles << endl;
-  //       // cout << "baddddddddd" << endl;
-  //     }
-  //     w_prime += exp(p.weight);
-  //     // cout <<"w_prime: " << w_prime << endl;
-  //     if (w_prime > x) {
-  //         Particle r;
-  //         r.loc = p.loc;// + error; // add noise here
-  //         r.angle = p.angle;//  +rng_.Gaussian(0, 0.07); // add noise here
-  //         // r.weight = p.weight;
-  //         //r weight we need to calculate
-  //         // cout << "added: " << p.weight << "loc: " << p.loc << endl;
-  //         // possible convert back to regular weight?
-  //         new_particles.push_back(r);
-  //         break;
-  //     }
-  //   }
-  //   count += 1;
-  // }
-  // // cout << particles_.size() << endl;
-  // if (new_particles.size() != 0) {
-  //   particles_ = new_particles;
-  // } else {
-  //   cout << "newp empty" << endl;
-  // }
-
+  int count = 0;
+  for (int i = 0; i < FLAGS_num_particles; i++) { // Repeat N times
+  // while (count < FLAGS_num_particles) {
+    // cout << "hi" << endl;
+    // Draw a random number between 0 and W
+    int x = rand() % sum_W + 1;
+    // cout << "x: " << x << endl;
+    float w_prime = 0; // w’ = 0
+    for (Particle p: particles_) { // for each particle weight wi
+      if (p.weight < -3000) {
+        // cout << FLAGS_num_particles << endl;
+        // cout << "baddddddddd" << endl;
+      }
+      //cout << "IN FOR LOOP" << endl;
+      w_prime += exp(p.weight);
+      // cout <<"w_prime: " << w_prime << endl;
+      if (w_prime > x) {
+          Particle r;
+          r.loc = p.loc;// + error; // add noise here
+          r.angle = p.angle;//  +rng_.Gaussian(0, 0.07); // add noise here
+          // r.weight = p.weight;
+          //r weight we need to calculate
+          // cout << "added: " << p.weight << "loc: " << p.loc << endl;
+          // possible convert back to regular weight?
+          new_particles.push_back(r);
+          break;
+      }
+    }
+    count += 1;
+  }
   // cout << particles_.size() << endl;
+  if (new_particles.size() != 0) {
+    particles_ = new_particles;
+  } else {
+    cout << "newp empty" << endl;
+  }
 
-  // /*
-  //   for each particle weight wi
-  //     w’ = w’ + wi
-  //     if w’ > x:
-  //       Replicate particle i
-  //         Particle p;
-  //         p.loc = loc;// + error; //add noise here
-  //         p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
-  //         new_particles.push_back(p);
-  //       break for
-  // */
+  cout << particles_.size() << endl;
+
+  /*
+    for each particle weight wi
+      w’ = w’ + wi
+      if w’ > x:
+        Replicate particle i
+          Particle p;
+          p.loc = loc;// + error; //add noise here
+          p.angle = angle;//  +rng_.Gaussian(0, 0.07); //add noise here
+          new_particles.push_back(p);
+        break for
+  */
   
 }
 
@@ -382,9 +389,9 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     }
     // cout << "calling resample" << distance_traveled << endl;
 
-    if (distance_traveled >= 3.0) {
-      // cout << "resample" << endl;
-      MilesResample();
+    if (distance_traveled >= 1.0) {
+       cout << "RESAMPLE!!<<<<<" << endl;
+      Resample();
       distance_traveled = 0.0;
     }
   }
@@ -458,7 +465,7 @@ void ParticleFilter::Initialize(const string& map_file,
   cout << "init?" << endl;
   cout << loc << endl;
   cout << angle << endl;
-  map_.Load("maps/GDC1.txt");
+  map_.Load(map_file);
  
   particles_.clear();
   
@@ -496,14 +503,14 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc, float* angle) const {
 
   if (particles_.size() > 0) {
     Particle max_p = particles_[0];
-    cout << "beginning" << endl;
+    //cout << "beginning" << endl;
     for (Particle p : particles_) {
-      cout << p.weight << endl;
+      //cout << p.weight << endl;
       if (p.weight > max_p.weight) {
         max_p = p;
       }
     }
-    cout << "end" << endl;
+    //cout << "end" << endl;
     *loc = max_p.loc;
     *angle = max_p.angle;
 

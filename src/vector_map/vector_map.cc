@@ -27,7 +27,6 @@
 
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
-#include "gflags/gflags.h"
 
 #include "shared/math/geometry.h"
 #include "shared/math/line2d.h"
@@ -50,10 +49,6 @@ using std::swap;
     (LINE).p1.x(), (LINE).p1.y()
 
 #define PRINT_VEC2(V) (V).x(), (V).y()
-
-DEFINE_double(min_line_length,
-              0.05,
-              "Minimum line length to consider for Analytic ray casting");
 
 namespace vector_map {
 
@@ -216,8 +211,8 @@ void VectorMap::SceneRender(const Vector2f& loc,
                             float angle_min,
                             float angle_max,
                             vector<line2f>* render) const {
+  static const float eps = 0.0001;
   static const unsigned int MaxLines = 2000;
-  const float eps = Sq(FLAGS_min_line_length);
   vector<line2f> scene;
   vector<line2f> lines_list;
   GetSceneLines(loc, max_range, &lines_list);
@@ -320,6 +315,31 @@ void VectorMap::RayCast(const Vector2f& loc,
     }
   }
 
+  if (true) {
+    struct Comparator{
+      bool operator() (RayCastRay r1, RayCastRay r2) {
+        // if (r1.iidx <= r2.iidx) return true;
+        const Vector2f l1 = r1.ray_end - loc;
+        const Vector2f l2 = r2.ray_end - loc;
+        return (Cross(l1, l2) > 0.0);
+        return false;
+      };
+      Vector2f loc;
+    };
+    Comparator comparator;
+    comparator.loc = loc;
+    /*
+    const auto comparator = [loc](const RayCastRay& r1, const RayCastRay& r2) {
+      if (r1.iidx < r2.iidx) return true;
+      const Vector2f l1 = r1.ray_end - loc;
+      const Vector2f l2 = r2.ray_end - loc;
+      return (Cross(l1, l2) > 0.0);
+      return false;
+    };
+    */
+    sort(ray_cast_rays.begin(), ray_cast_rays.end(), comparator);
+  }
+
   if (ray_cast_rays.size() < 2) return;
   for (size_t i = 0; i < ray_cast_rays.size(); ++i) {
     if (ray_cast_rays[i].ray_end != ray_cast_rays[i - 1].ray_end) {
@@ -351,8 +371,13 @@ void VectorMap::Cleanup() {
     for (const line2f l2 : new_lines) {
       if (l2.Intersection(l1, &p)) {
         const Vector2f shrink = kShrinkDistance * l1.Dir();
-        lines.push_back(line2f(l1.p0, p - shrink));
-        lines.push_back(line2f(p + shrink, l1.p1));
+
+        const line2f a(l1.p0, p - shrink);
+        const line2f b(p + shrink, l1.p1);
+
+        lines.push_back(a);
+        lines.push_back(b);
+
         intersection = true;
         break;
       }

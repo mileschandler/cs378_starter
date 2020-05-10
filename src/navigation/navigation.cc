@@ -112,13 +112,13 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
       "map", "navigation_global");
   InitRosHeader("base_link", &drive_msg_.header);
   //load map object here somewhere
-  map_.Load("maps/GDC1.txt"); //eventually can change to map_file
+  map_.Load(map_file); //eventually can change to map_file
   path_set = true;
 }
 
 
 bool Navigation::CheckNode(Vector2f& node) {
-    const float grid_dist = 0.35;
+    const float grid_dist = 0.125;
     vector<Vector2f> neighbors;
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++) {
@@ -173,6 +173,7 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
     // cout << "nav_goal: " << loc << endl;
     nav_goal_loc_ = loc;
     path_set = false;
+    navigation_complete = false;
 
 }
 
@@ -430,7 +431,7 @@ std::pair<float, float> Navigation::UpdateFreeDistance(float curvature) {
 std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carrot) {
     // for each possible path
     // const float w1 = 0.4;
-    const float w2 = -2; //-0.4;
+    const float w2 = -1.0; //-0.4;
     float max_score = -MAXFLOAT;
     std::pair<float, float> best_path;
 
@@ -440,7 +441,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
     float left = 0;
     for (float curve = -1; curve <= 1; curve += curve_delta) {
         std::pair<float, float> delta_x_phi = UpdateFreeDistance(curve);
-        // float clearance = GetClearance(delta_x_phi.first, curve);
+        float clearance = GetClearance(delta_x_phi.first, curve);
        // cout << "clearance: " << clearance << endl;
         float distance_to_goal = GetDistanceRemaining(delta_x_phi.first, curve, carrot);
         //float clearance = 0;
@@ -454,7 +455,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
         float score = delta_x_phi.first + w2 * distance_to_goal;
         //this shows me that left is always getting a lower distance remaining. 
         //cout << "SCORE " << score << " curve " << curve << " clearance " << clearance << endl;
-        //DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
+        DrawPathOption(curve, delta_x_phi.first, clearance, local_viz_msg_);
         if (score >= max_score) {
             //cout << "MAX SCORE " << max_score << endl;
             max_score = score;
@@ -463,7 +464,7 @@ std::pair<float, float> Navigation::GetBestPath(float old_delta, Vector2f& carro
             
         }
     }
-    //DrawPathOption(best_path.second, best_path.first, 0, local_viz_msg_);
+    DrawPathOption(best_path.second, best_path.first, 0, local_viz_msg_);
     cout << "LEFT:  " << left << " Center: " << center << " RIGHT: " << right << endl; 
     return best_path;
 }
@@ -507,7 +508,7 @@ void Navigation::PlanPath(std::unordered_map<Vector2f, Vector2f, matrix_hash<Vec
 
 Vector2f Navigation::GetCarrot() {
     Vector2f carrot(69, 69);
-    float radius = 4.0;
+    float radius = 2.0;
     float epsilon = 0.2;
     float min_pos = path_points.size() - 1;
     for (int j = 0; j < (int) path_points.size(); j++) {
@@ -537,18 +538,28 @@ void Navigation::Run(float delta_x, float theta) {
     
     //******CP7*******
     //getCarrot()
+    if (navigation_complete){
+        nav_goal_loc_ = robot_loc_;
+    }
+
     if ((nav_goal_loc_ - robot_loc_).norm() <= done_dist || nav_goal_loc_ == Vector2f(0,0) ){
+
         msg.velocity = 0;
         msg.curvature = 0;
         // msg.curvature = theta;
         drive_pub_.publish(msg);
         viz_pub_.publish(local_viz_msg_);
+        nav_goal_loc_ = robot_loc_;
+        navigation_complete = true;
         return;
     } 
     Vector2f carrot;
     if (path_set) {
         carrot = GetCarrot();
-    } else {
+        if (carrot.x() == 69 && carrot.y() == 69){
+            path_set = false;
+        }
+    } if (!path_set) {
         came_from.clear();
         path_points.clear();
         //cout << "PLANNING: " << endl;
