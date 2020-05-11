@@ -142,7 +142,7 @@ vector<Vector2f> Navigation::FindNeighbors(Vector2f& loc) {
             if (!(i == 0 && j == 0)) {
                 Vector2f n(loc.x() + (i * grid_dist), loc.y() + (j * grid_dist));
                 //check if this neighbor n intercects with a map line and check that its not too close to wall
-                if (!map_.Intersects(loc, n) && CheckNode(n)) {
+                if (!map_.Intersects(loc, n)){ //&& CheckNode(n)) {
                     neighbors.push_back(n);
                 }
             }
@@ -556,9 +556,9 @@ void Navigation::Run(float delta_x, float theta) {
     Vector2f carrot;
     if (path_set) {
         carrot = GetCarrot();
-        if (carrot.x() == 69 && carrot.y() == 69){
-            path_set = false;
-        }
+        // if (carrot.x() == 69 && carrot.y() == 69){
+        //     path_set = false;
+        // }
     } if (!path_set) {
         came_from.clear();
         path_points.clear();
